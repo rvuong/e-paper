@@ -1,0 +1,230 @@
+//! Phase 1 layout: what to draw for each person, without drawing it.
+//!
+//! Geometry from the mockups (`docs/mockups/phase1-*.svg`, CLAUDE.md "Layout").
+//! Every diameter is the outer size of the shape: its stroke is drawn inside.
+//! Centres are points between pixels, as in the SVG: x = 109 is the boundary
+//! between pixel columns 108 and 109.
+
+use embedded_graphics::prelude::Point;
+
+use crate::refresh::HouseholdState;
+use crate::state::{Person, PersonState};
+
+/// Display size in pixels.
+pub const WIDTH: u32 = 800;
+pub const HEIGHT: u32 = 480;
+
+/// Display order, left to right.
+pub const PEOPLE: [Person; 4] = [Person('R'), Person('M'), Person('H'), Person('L')];
+
+const SLOT: u32 = 178;
+const GAP: u32 = 16;
+const CORE_DIAMETER: u32 = 130;
+const CORE_STROKE: u32 = 12;
+const RING_DIAMETERS: [u32; 2] = [154, 178];
+const RING_STROKE: u32 = 6;
+const LETTER_SIZE: u32 = 88;
+
+/// Colour of a pixel on the 1-bit panel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ink {
+    Black,
+    White,
+}
+
+/// A black-stroked circle, optionally filled with black.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Circle {
+    pub diameter: u32,
+    pub stroke_width: u32,
+    pub filled: bool,
+}
+
+/// A capital letter centred on its slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Letter {
+    pub glyph: char,
+    pub size: u32,
+    pub ink: Ink,
+}
+
+/// Everything drawn for one person.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Slot {
+    pub person: Person,
+    pub center: Point,
+    pub core: Circle,
+    /// The activity mark: empty, or the two concentric rings.
+    pub rings: Vec<Circle>,
+    pub letter: Letter,
+}
+
+/// The four slots, in display order. A person missing from the state is
+/// drawn as away.
+pub fn layout(state: &HouseholdState) -> Vec<Slot> {
+    let row_width = PEOPLE.len() as u32 * SLOT + (PEOPLE.len() as u32 - 1) * GAP;
+    let first_center = (WIDTH - row_width) / 2 + SLOT / 2;
+    PEOPLE
+        .into_iter()
+        .zip(0..)
+        .map(|(person, index)| {
+            let person_state = state.get(&person).copied().unwrap_or(PersonState::Away);
+            let x = first_center + index * (SLOT + GAP);
+            slot(
+                person,
+                person_state,
+                Point::new(x as i32, HEIGHT as i32 / 2),
+            )
+        })
+        .collect()
+}
+
+fn slot(person: Person, person_state: PersonState, center: Point) -> Slot {
+    let home = person_state != PersonState::Away;
+    let rings = if person_state == PersonState::HomeActive {
+        RING_DIAMETERS
+            .into_iter()
+            .map(|diameter| Circle {
+                diameter,
+                stroke_width: RING_STROKE,
+                filled: false,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Slot {
+        person,
+        center,
+        core: Circle {
+            diameter: CORE_DIAMETER,
+            stroke_width: CORE_STROKE,
+            filled: home,
+        },
+        rings,
+        letter: Letter {
+            glyph: person.0,
+            size: LETTER_SIZE,
+            ink: if home { Ink::White } else { Ink::Black },
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use PersonState::{Away, HomeActive, HomePassive};
+
+    fn household(states: [PersonState; 4]) -> HouseholdState {
+        PEOPLE.into_iter().zip(states).collect()
+    }
+
+    fn slot_of(slots: &[Slot], initial: char) -> &Slot {
+        slots
+            .iter()
+            .find(|slot| slot.person == Person(initial))
+            .unwrap()
+    }
+
+    #[test]
+    fn four_slots_in_display_order_and_position() {
+        let slots = layout(&household([Away; 4]));
+        let placed: Vec<(char, Point)> = slots
+            .iter()
+            .map(|slot| (slot.person.0, slot.center))
+            .collect();
+        assert_eq!(
+            placed,
+            [
+                ('R', Point::new(109, 240)),
+                ('M', Point::new(303, 240)),
+                ('H', Point::new(497, 240)),
+                ('L', Point::new(691, 240)),
+            ]
+        );
+    }
+
+    #[test]
+    fn away_is_an_outline_with_a_black_letter_and_no_mark() {
+        let slots = layout(&household([Away; 4]));
+        let slot = slot_of(&slots, 'R');
+        assert_eq!(
+            slot.core,
+            Circle {
+                diameter: 130,
+                stroke_width: 12,
+                filled: false
+            }
+        );
+        assert_eq!(
+            slot.letter,
+            Letter {
+                glyph: 'R',
+                size: 88,
+                ink: Ink::Black
+            }
+        );
+        assert!(slot.rings.is_empty());
+    }
+
+    #[test]
+    fn home_passive_is_filled_with_a_white_letter_and_no_mark() {
+        let slots = layout(&household([HomePassive, Away, Away, Away]));
+        let slot = slot_of(&slots, 'R');
+        assert!(slot.core.filled);
+        assert_eq!(slot.letter.ink, Ink::White);
+        assert!(slot.rings.is_empty());
+    }
+
+    #[test]
+    fn home_active_adds_the_double_ring() {
+        let slots = layout(&household([Away, Away, HomeActive, Away]));
+        let slot = slot_of(&slots, 'H');
+        assert!(slot.core.filled);
+        assert_eq!(slot.letter.ink, Ink::White);
+        assert_eq!(
+            slot.rings,
+            [
+                Circle {
+                    diameter: 154,
+                    stroke_width: 6,
+                    filled: false
+                },
+                Circle {
+                    diameter: 178,
+                    stroke_width: 6,
+                    filled: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn person_missing_from_the_state_is_drawn_away() {
+        let state: HouseholdState = [(Person('R'), HomePassive)].into_iter().collect();
+        let slots = layout(&state);
+        assert_eq!(slots.len(), 4);
+        let slot = slot_of(&slots, 'M');
+        assert!(!slot.core.filled);
+        assert!(slot.rings.is_empty());
+    }
+
+    #[test]
+    fn every_shape_fits_on_the_display() {
+        let slots = layout(&household([HomeActive; 4]));
+        for slot in &slots {
+            let outer = slot
+                .rings
+                .iter()
+                .chain([&slot.core])
+                .map(|circle| circle.diameter)
+                .max()
+                .unwrap() as i32;
+            let (x, y) = (slot.center.x, slot.center.y);
+            assert!(x - outer / 2 >= 0 && x + outer / 2 <= WIDTH as i32);
+            assert!(y - outer / 2 >= 0 && y + outer / 2 <= HEIGHT as i32);
+        }
+        assert_eq!(slots[0].center.x - 178 / 2, 20);
+        assert_eq!(slots[3].center.x + 178 / 2, 780);
+    }
+}

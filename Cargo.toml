@@ -7,3 +7,9 @@ description = "Household e-paper dashboard on a Raspberry Pi"
 publish = false
 
 [dependencies]
+embedded-graphics = "0.8.2"
+fontdue = "0.9.4"
+png = "0.18.1"
+
+[dev-dependencies]
+embedded-graphics-simulator = "0.8.0"
