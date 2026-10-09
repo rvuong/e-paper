@@ -1,0 +1,15 @@
+# Build output
+/target
+
+# Secrets and personal data: never committed (only *.example.* files are)
+/.env
+/config.toml
+/devices.toml
+/secrets/
+
+# IDE
+/.idea/
+
+# Local files used by tools/ (font, Python virtualenv)
+/tools/.venv/
+/tools/*.ttf
