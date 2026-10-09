@@ -1,5 +1,6 @@
 //! Household e-paper dashboard.
 
+pub mod cycle;
 pub mod devices;
 pub mod frame;
 pub mod freebox;
@@ -10,4 +11,5 @@ pub mod presence;
 pub mod rate;
 pub mod refresh;
 pub mod render;
+pub mod saved;
 pub mod state;

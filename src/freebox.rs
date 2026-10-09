@@ -2,6 +2,7 @@
 //!
 //! The HTTP calls live in `freebox_client`. See CLAUDE.md, "Freebox API notes".
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use hmac::{Hmac, KeyInit, Mac};
@@ -78,6 +79,17 @@ pub fn session_password(app_token: &str, challenge: &str) -> String {
 
 /// The `result` of a Freebox answer, or its error.
 pub fn parse_response<T: DeserializeOwned>(json: &str) -> Result<T, FreeboxError> {
+    parse_optional(json)?.ok_or_else(|| FreeboxError::Format("success without result".into()))
+}
+
+/// The `result` of a Freebox answer returning a list. The Freebox omits
+/// `result` when the list is empty.
+fn parse_list<T: DeserializeOwned>(json: &str) -> Result<Vec<T>, FreeboxError> {
+    Ok(parse_optional(json)?.unwrap_or_default())
+}
+
+/// The `result` of a Freebox answer, `None` if absent, or its error.
+fn parse_optional<T: DeserializeOwned>(json: &str) -> Result<Option<T>, FreeboxError> {
     #[derive(Deserialize)]
     struct Envelope<T> {
         success: bool,
@@ -88,9 +100,7 @@ pub fn parse_response<T: DeserializeOwned>(json: &str) -> Result<T, FreeboxError
     let envelope: Envelope<T> =
         serde_json::from_str(json).map_err(|e| FreeboxError::Format(e.to_string()))?;
     if envelope.success {
-        envelope
-            .result
-            .ok_or_else(|| FreeboxError::Format("success without result".into()))
+        Ok(envelope.result)
     } else {
         Err(FreeboxError::Api {
             code: envelope.error_code.unwrap_or_default(),
@@ -154,7 +164,7 @@ pub fn parse_hosts(json: &str) -> Result<Vec<Host>, FreeboxError> {
         kind: String,
     }
 
-    let raw_hosts: Vec<RawHost> = parse_response(json)?;
+    let raw_hosts: Vec<RawHost> = parse_list(json)?;
     let mut hosts: Vec<Host> = raw_hosts
         .into_iter()
         .filter_map(|raw| {
@@ -170,6 +180,53 @@ pub fn parse_hosts(json: &str) -> Result<Vec<Host>, FreeboxError> {
         .collect();
     hosts.sort_by_key(|host| host.name.to_lowercase());
     Ok(hosts)
+}
+
+/// Identifiers of the Wi-Fi access points, from `GET wifi/ap/`.
+pub fn parse_access_points(json: &str) -> Result<Vec<u64>, FreeboxError> {
+    #[derive(Deserialize)]
+    struct AccessPoint {
+        id: u64,
+    }
+    let access_points: Vec<AccessPoint> = parse_list(json)?;
+    Ok(access_points.into_iter().map(|ap| ap.id).collect())
+}
+
+/// A Wi-Fi client of an access point.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Station {
+    /// Lowercase MAC address.
+    pub mac: String,
+    /// Bytes sent by the Freebox to the station: its download.
+    pub tx_bytes: u64,
+}
+
+/// Clients of one access point, from `GET wifi/ap/{id}/stations/`.
+pub fn parse_stations(json: &str) -> Result<Vec<Station>, FreeboxError> {
+    #[derive(Deserialize)]
+    struct RawStation {
+        mac: String,
+        tx_bytes: u64,
+    }
+    let raw_stations: Vec<RawStation> = parse_list(json)?;
+    Ok(raw_stations
+        .into_iter()
+        .map(|raw| Station {
+            mac: raw.mac.to_lowercase(),
+            tx_bytes: raw.tx_bytes,
+        })
+        .collect())
+}
+
+/// Download counter of every station, all access points together. A station
+/// seen on two access points (band switch) keeps its highest counter.
+pub fn merge_stations(stations: impl IntoIterator<Item = Station>) -> BTreeMap<String, u64> {
+    let mut counters = BTreeMap::new();
+    for station in stations {
+        let counter = counters.entry(station.mac).or_insert(0);
+        *counter = (*counter).max(station.tx_bytes);
+    }
+    counters
 }
 
 #[cfg(test)]
@@ -309,5 +366,51 @@ mod tests {
             .map(|host| host.name)
             .collect();
         assert_eq!(names, ["Freebox Player POP", "Laptop-M", "Pixel-R", "PS5"]);
+    }
+
+    const WIFI_AP: &str = include_str!("../tests/fixtures/wifi_ap.json");
+    const WIFI_STATIONS: &str = include_str!("../tests/fixtures/wifi_ap_stations.json");
+
+    #[test]
+    fn access_points_give_their_ids() {
+        assert_eq!(parse_access_points(WIFI_AP), Ok(vec![0, 1, 2]));
+    }
+
+    #[test]
+    fn stations_give_lowercase_mac_and_download_counter() {
+        assert_eq!(
+            parse_stations(WIFI_STATIONS),
+            Ok(vec![
+                Station {
+                    mac: "02:00:00:00:00:02".into(),
+                    tx_bytes: 1_200_000_000
+                },
+                Station {
+                    mac: "02:00:00:00:00:ab".into(),
+                    tx_bytes: 45_000_000_000
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn access_point_without_clients_has_no_station() {
+        assert_eq!(parse_stations(r#"{"success": true}"#), Ok(vec![]));
+    }
+
+    #[test]
+    fn stations_of_all_access_points_are_merged_keeping_the_highest_counter() {
+        let station = |mac: &str, tx_bytes| Station {
+            mac: mac.into(),
+            tx_bytes,
+        };
+        let counters = merge_stations([
+            station("02:00:00:00:00:02", 500),
+            station("02:00:00:00:00:03", 900),
+            station("02:00:00:00:00:02", 700),
+        ]);
+        assert_eq!(counters.len(), 2);
+        assert_eq!(counters["02:00:00:00:00:02"], 700);
+        assert_eq!(counters["02:00:00:00:00:03"], 900);
     }
 }

@@ -2,6 +2,7 @@
 //! certificates. Not unit-tested: the logic lives in `freebox`, this module
 //! only moves bytes. Checked by hand against the real Freebox.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -13,8 +14,8 @@ use ureq::Agent;
 use ureq::tls::{PemItem, RootCerts, TlsConfig};
 
 use crate::freebox::{
-    AuthorizationStep, FreeboxError, Host, api_base, authorization_step, parse_hosts,
-    parse_response, session_password,
+    AuthorizationStep, FreeboxError, Host, api_base, authorization_step, merge_stations,
+    parse_access_points, parse_hosts, parse_response, parse_stations, session_password,
 };
 
 const HOST: &str = "https://mafreebox.freebox.fr";
@@ -118,6 +119,17 @@ impl Client {
     /// Devices known to the Freebox on the main LAN interface.
     pub fn lan_hosts(&self) -> Result<Vec<Host>, FreeboxError> {
         parse_hosts(&self.get_text(&format!("{}lan/browser/pub/", self.api))?)
+    }
+
+    /// Download counter of every Wi-Fi station, all access points together.
+    pub fn wifi_counters(&self) -> Result<BTreeMap<String, u64>, FreeboxError> {
+        let access_points = parse_access_points(&self.get_text(&format!("{}wifi/ap/", self.api))?)?;
+        let mut stations = Vec::new();
+        for id in access_points {
+            let url = format!("{}wifi/ap/{id}/stations/", self.api);
+            stations.extend(parse_stations(&self.get_text(&url)?)?);
+        }
+        Ok(merge_stations(stations))
     }
 
     fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, FreeboxError> {

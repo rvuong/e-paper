@@ -147,6 +147,25 @@ fn person_from(text: &str) -> Option<Person> {
         .find(|person| text == person.0.to_string())
 }
 
+/// One line per person, in display order: number of devices and smartphone.
+pub fn summary(mapping: &Mapping) -> Vec<String> {
+    PEOPLE
+        .into_iter()
+        .map(|person| {
+            let devices: Vec<&Assignment> = mapping
+                .values()
+                .filter(|assignment| assignment.person == person)
+                .collect();
+            let smartphone = if devices.iter().any(|assignment| assignment.smartphone) {
+                "smartphone OK"
+            } else {
+                "no smartphone: always shown away"
+            };
+            format!("{}: {} device(s), {smartphone}", person.0, devices.len())
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -285,5 +304,25 @@ mod tests {
                 mac: "aa:bb:cc:dd:ee:01".into()
             })
         );
+    }
+
+    #[test]
+    fn summary_counts_devices_and_smartphone_per_person() {
+        let text = device("02:00:00:00:00:01", "R", true)
+            + &device("02:00:00:00:00:02", "R", false)
+            + &device("02:00:00:00:00:03", "M", true)
+            + &device("02:00:00:00:00:04", "H", true)
+            + &device("02:00:00:00:00:05", "", false);
+        let lines = summary(&parse_mapping(&text).unwrap());
+        assert_eq!(lines[0], "R: 2 device(s), smartphone OK");
+        assert_eq!(lines[1], "M: 1 device(s), smartphone OK");
+        assert_eq!(lines[2], "H: 1 device(s), smartphone OK");
+    }
+
+    #[test]
+    fn summary_warns_about_a_person_without_smartphone() {
+        let text = device("02:00:00:00:00:01", "L", false);
+        let lines = summary(&parse_mapping(&text).unwrap());
+        assert_eq!(lines[3], "L: 1 device(s), no smartphone: always shown away");
     }
 }

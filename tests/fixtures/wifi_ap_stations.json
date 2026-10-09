@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "result": [
+    {
+      "id": "02:00:00:00:00:02-5G",
+      "mac": "02:00:00:00:00:02",
+      "hostname": "Pixel-R",
+      "state": "authenticated",
+      "inactive": 2,
+      "conn_duration": 3600,
+      "rx_bytes": 85000000,
+      "tx_bytes": 1200000000
+    },
+    {
+      "id": "02:00:00:00:00:AB-5G",
+      "mac": "02:00:00:00:00:AB",
+      "hostname": "PS5",
+      "state": "authenticated",
+      "inactive": 0,
+      "conn_duration": 7200,
+      "rx_bytes": 900000000,
+      "tx_bytes": 45000000000
+    }
+  ]
+}

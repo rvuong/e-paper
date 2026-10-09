@@ -5,6 +5,7 @@
 /.env
 /config.toml
 /devices.toml
+/state.json
 /secrets/
 
 # IDE

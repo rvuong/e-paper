@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "result": [
+    { "id": 0, "name": "2.4G", "status": { "state": "active" } },
+    { "id": 1, "name": "5G", "status": { "state": "active" } },
+    { "id": 2, "name": "6G", "status": { "state": "active" } }
+  ]
+}

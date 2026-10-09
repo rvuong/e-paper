@@ -1,14 +1,16 @@
 //! Logical state of each household member, as shown on the display.
 
+use serde::{Deserialize, Serialize};
+
 /// A household member, identified by the initial shown on the display.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Person(pub char);
 
 /// What the display shows for one person.
 ///
 /// "Away with the activity mark" cannot be represented: the privacy rule is
 /// enforced by the type itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PersonState {
     Away,
     HomePassive,
