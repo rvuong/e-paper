@@ -12,6 +12,19 @@ use crate::refresh::{HouseholdState, needs_refresh};
 use crate::saved::SavedState;
 use crate::state::{Person, person_state};
 
+/// The daily forced refresh happens on the first cycle after this hour (UTC):
+/// 03:00 UTC is 04:00 in winter and 05:00 in summer in France.
+pub const DAILY_REFRESH_HOUR_UTC: i64 = 3;
+
+/// Whether the daily forced refresh is due: the last redraw happened before
+/// the most recent `DAILY_REFRESH_HOUR_UTC`.
+pub fn daily_refresh_due(now: i64, last_full_refresh: Option<i64>) -> bool {
+    const DAY: i64 = 86_400;
+    let offset = DAILY_REFRESH_HOUR_UTC * 3_600;
+    let latest_boundary = (now - offset).div_euclid(DAY) * DAY + offset;
+    last_full_refresh.is_none_or(|last| last < latest_boundary)
+}
+
 /// Everything a cycle needs.
 pub struct CycleInput<'a> {
     /// Unix timestamp in seconds.
@@ -54,11 +67,15 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
             (person, person_state(home, rate, input.threshold_bps))
         })
         .collect();
+    let last_full_refresh = input
+        .previous
+        .and_then(|previous| previous.last_full_refresh);
     let refresh = input.force
         || needs_refresh(
             input.previous.map(|previous| &previous.household),
             &household,
-        );
+        )
+        || daily_refresh_due(input.now, last_full_refresh);
     let counters = input
         .counters
         .iter()
@@ -70,6 +87,11 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
             polled_at: input.now,
             household: household.clone(),
             counters,
+            last_full_refresh: if refresh {
+                Some(input.now)
+            } else {
+                last_full_refresh
+            },
         },
         household,
         refresh,
@@ -167,6 +189,7 @@ mod tests {
             polled_at: NOW - 900,
             household: PEOPLE.into_iter().map(|person| (person, Away)).collect(),
             counters: counters(values),
+            last_full_refresh: Some(NOW - 900),
         }
     }
 
@@ -296,5 +319,46 @@ mod tests {
             counters(&[(R_LAPTOP, 42), (H_CONSOLE, 7)])
         );
         assert_eq!(output.saved.household, output.household);
+    }
+
+    /// 2025-10-09 03:00:00 UTC: the daily refresh boundary of the day of `NOW`
+    /// (2025-10-09 08:53:20 UTC).
+    const TODAY_03H: i64 = 1_759_978_800;
+    const DAY: i64 = 86_400;
+
+    #[test]
+    fn daily_refresh_is_due_after_the_hour_if_not_done_since() {
+        assert!(daily_refresh_due(NOW, Some(TODAY_03H - 60)));
+        assert!(daily_refresh_due(NOW, None));
+    }
+
+    #[test]
+    fn daily_refresh_is_not_due_if_done_since_the_hour_today() {
+        assert!(!daily_refresh_due(NOW, Some(TODAY_03H + 60)));
+    }
+
+    #[test]
+    fn daily_refresh_is_not_due_before_the_hour_if_done_since_yesterday() {
+        let before = TODAY_03H - 3_600;
+        assert!(!daily_refresh_due(before, Some(TODAY_03H - DAY + 60)));
+        assert!(daily_refresh_due(before, Some(TODAY_03H - DAY - 60)));
+    }
+
+    #[test]
+    fn unchanged_state_refreshes_when_the_daily_refresh_is_due() {
+        let mut before = previous(&[]);
+        before.last_full_refresh = Some(TODAY_03H - 60);
+        assert!(run(&[], &[], Some(&before), false).refresh);
+    }
+
+    #[test]
+    fn last_full_refresh_is_updated_on_redraw_and_kept_otherwise() {
+        let redrawn = run(&[], &[], None, false);
+        assert_eq!(redrawn.saved.last_full_refresh, Some(NOW));
+
+        let before = previous(&[]);
+        let unchanged = run(&[], &[], Some(&before), false);
+        assert!(!unchanged.refresh);
+        assert_eq!(unchanged.saved.last_full_refresh, before.last_full_refresh);
     }
 }

@@ -1,0 +1,25 @@
+[Unit]
+Description=Household e-paper dashboard: one cycle
+Wants=network-online.target
+After=network-online.target time-sync.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/e-paper run --epd \
+    --token %d/freebox_app_token \
+    --devices %d/devices.toml \
+    --state /var/lib/e-paper/state.json
+# Secrets and personal data, readable by root only in /etc/e-paper/, handed
+# to the service in its credentials directory (%d).
+LoadCredential=freebox_app_token:/etc/e-paper/freebox_app_token
+LoadCredential=devices.toml:/etc/e-paper/devices.toml
+# A throwaway user, created by systemd for each run, allowed to use the panel.
+DynamicUser=yes
+SupplementaryGroups=spi gpio
+StateDirectory=e-paper
+# A refresh takes about 20 s; give up on a hung run.
+TimeoutStartSec=120
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes

@@ -18,6 +18,10 @@ pub struct SavedState {
     pub household: HouseholdState,
     /// Download counter (`tx_bytes`) of each assigned device seen, by MAC.
     pub counters: BTreeMap<String, u64>,
+    /// Last time the display was redrawn, Unix timestamp in seconds. Absent
+    /// from state files written before it existed.
+    #[serde(default)]
+    pub last_full_refresh: Option<i64>,
 }
 
 /// Reads the saved state. A missing file means no previous state. An
@@ -66,6 +70,7 @@ mod tests {
             counters: [("02:00:00:00:00:02".to_string(), 1_200_000_000)]
                 .into_iter()
                 .collect(),
+            last_full_refresh: Some(1_759_990_000),
         }
     }
 
@@ -91,5 +96,19 @@ mod tests {
         let (state, warning) = load(&path);
         assert_eq!(state, None);
         assert!(warning.unwrap().contains("corrupt"));
+    }
+
+    #[test]
+    fn state_file_without_last_full_refresh_reads_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        fs::write(
+            &path,
+            r#"{"polled_at": 1760000000, "household": {"R": "Away"}, "counters": {}}"#,
+        )
+        .unwrap();
+        let (state, warning) = load(&path);
+        assert_eq!(warning, None);
+        assert_eq!(state.unwrap().last_full_refresh, None);
     }
 }

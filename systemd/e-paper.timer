@@ -1,0 +1,10 @@
+[Unit]
+Description=Household e-paper dashboard: one cycle every 15 minutes
+
+[Timer]
+OnCalendar=*:00/15
+AccuracySec=30s
+# A run still in progress is never started twice: systemd skips the trigger.
+
+[Install]
+WantedBy=timers.target
