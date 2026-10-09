@@ -19,7 +19,8 @@ deploy: build
 		&& sudo systemctl enable --now e-paper.timer'
 
 status:
-	ssh $(PI) 'systemctl list-timers e-paper.timer; systemctl status e-paper.service --no-pager'
+	@# `systemctl status` exits with 3 when the service is inactive, as it is between cycles.
+	ssh $(PI) 'systemctl list-timers e-paper.timer; systemctl status e-paper.service --no-pager || true'
 
 logs:
 	ssh $(PI) 'journalctl -u e-paper.service -n 50 --no-pager'
