@@ -11,9 +11,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use clap::{Parser, Subcommand};
 use e_paper::cycle::{CycleInput, cycle};
 use e_paper::devices;
+use e_paper::display::{Display, PngDisplay};
+use e_paper::epd;
 use e_paper::frame::Frame;
 use e_paper::freebox_client::Client;
 use e_paper::layout::{PEOPLE, layout};
+use e_paper::mockups::phase1_states;
 use e_paper::render::{atkinson_bold, render};
 use e_paper::saved;
 use e_paper::state::{ACTIVITY_THRESHOLD_BPS, PersonState};
@@ -59,9 +62,8 @@ enum Command {
         /// The state kept between runs.
         #[arg(long, default_value = "state.json")]
         state: PathBuf,
-        /// Where to draw the display (until the e-paper driver exists).
-        #[arg(long, default_value = "target/e-paper.png")]
-        png: PathBuf,
+        #[command(flatten)]
+        output: Output,
         /// Presence window in seconds: the cycle period.
         #[arg(long, default_value_t = 900)]
         interval: i64,
@@ -69,6 +71,44 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Shows the phase 1 mockup with an activity ring (legibility test).
+    TestPattern {
+        #[command(flatten)]
+        output: Output,
+    },
+    /// Clears the e-paper panel to white.
+    Clear,
+}
+
+/// Where to show the display.
+#[derive(clap::Args)]
+struct Output {
+    /// Draw on the e-paper panel (on the Raspberry Pi) instead of a PNG file.
+    #[arg(long)]
+    epd: bool,
+    /// The PNG file, when not drawing on the panel.
+    #[arg(long, default_value = "target/e-paper.png")]
+    png: PathBuf,
+}
+
+impl Output {
+    fn open(&self) -> Result<Box<dyn Display>, Box<dyn Error>> {
+        if self.epd {
+            Ok(Box::new(epd::linux::open()?))
+        } else {
+            Ok(Box::new(PngDisplay {
+                path: self.png.clone(),
+            }))
+        }
+    }
+
+    fn describe(&self) -> String {
+        if self.epd {
+            "e-paper panel".into()
+        } else {
+            self.png.display().to_string()
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -90,10 +130,16 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
             token,
             devices,
             state,
-            png,
+            output,
             interval,
             force,
-        } => run_cycle(&token, &devices, &state, &png, interval, force),
+        } => run_cycle(&token, &devices, &state, &output, interval, force),
+        Command::TestPattern { output } => test_pattern(&output),
+        Command::Clear => {
+            epd::linux::open()?.clear()?;
+            println!("Panel cleared");
+            Ok(())
+        }
     }
 }
 
@@ -140,7 +186,7 @@ fn run_cycle(
     token_path: &Path,
     devices_path: &Path,
     state_path: &Path,
-    png_path: &Path,
+    output_target: &Output,
     interval_secs: i64,
     force: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -176,14 +222,25 @@ fn run_cycle(
     if output.refresh {
         let mut frame = Frame::new();
         render(&mut frame, &layout(&output.household), &atkinson_bold())?;
-        fs::write(png_path, frame.to_png())
-            .map_err(|error| format!("cannot write {}: {error}", png_path.display()))?;
-        println!("Display redrawn: {}", png_path.display());
+        output_target.open()?.show(&frame)?;
+        println!("Display redrawn: {}", output_target.describe());
     } else {
         println!("No change: display not touched");
     }
     saved::save(state_path, &output.saved)
         .map_err(|error| format!("cannot write {}: {error}", state_path.display()))?;
+    Ok(())
+}
+
+fn test_pattern(output: &Output) -> Result<(), Box<dyn Error>> {
+    let (_, state) = phase1_states()
+        .into_iter()
+        .find(|(name, _)| *name == "phase1-activity-ring")
+        .expect("mockup exists");
+    let mut frame = Frame::new();
+    render(&mut frame, &layout(&state), &atkinson_bold())?;
+    output.open()?.show(&frame)?;
+    println!("Test pattern shown: {}", output.describe());
     Ok(())
 }
 

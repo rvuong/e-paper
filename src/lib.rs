@@ -2,6 +2,8 @@
 
 pub mod cycle;
 pub mod devices;
+pub mod display;
+pub mod epd;
 pub mod frame;
 pub mod freebox;
 pub mod freebox_client;
