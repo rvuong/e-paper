@@ -1,0 +1,55 @@
+{
+  "success": true,
+  "result": [
+    {
+      "id": "ether-02:00:00:00:00:02",
+      "primary_name": "Pixel-R",
+      "host_type": "smartphone",
+      "vendor_name": "Google, Inc.",
+      "l2ident": { "id": "02:00:00:00:00:02", "type": "mac_address" },
+      "active": true,
+      "reachable": true,
+      "last_activity": 1760000000,
+      "last_time_reachable": 1760000000
+    },
+    {
+      "id": "ether-02:00:00:00:00:01",
+      "primary_name": "Freebox Player POP",
+      "host_type": "freebox_player",
+      "vendor_name": "Freebox SAS",
+      "l2ident": { "id": "02:00:00:00:00:01", "type": "mac_address" },
+      "active": false,
+      "reachable": false,
+      "last_activity": 1759990000,
+      "last_time_reachable": 1759990000
+    },
+    {
+      "id": "ether-02:00:00:00:00:03",
+      "primary_name": "PS5",
+      "host_type": "workstation",
+      "vendor_name": "",
+      "l2ident": { "id": "02:00:00:00:00:03", "type": "mac_address" },
+      "active": true,
+      "reachable": true,
+      "last_activity": 1759999000,
+      "last_time_reachable": 1759999000
+    },
+    {
+      "id": "ether-02:00:00:00:00:04",
+      "primary_name": "Laptop-M",
+      "host_type": "laptop",
+      "l2ident": { "id": "02:00:00:00:00:04", "type": "mac_address" },
+      "active": false,
+      "reachable": false,
+      "last_time_reachable": 1759000000
+    },
+    {
+      "id": "other-unknown",
+      "primary_name": "Unknown",
+      "host_type": "other",
+      "l2ident": { "id": "unknown", "type": "other" },
+      "active": false,
+      "reachable": false
+    }
+  ]
+}

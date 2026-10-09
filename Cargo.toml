@@ -7,9 +7,17 @@ description = "Household e-paper dashboard on a Raspberry Pi"
 publish = false
 
 [dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
 embedded-graphics = "0.8.2"
 fontdue = "0.9.4"
+hmac = "0.13.0"
 png = "0.18.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha1 = "0.11.0"
+toml = "1.1.8"
+ureq = "3.4.2"
 
 [dev-dependencies]
 embedded-graphics-simulator = "0.8.0"
+tempfile = "3.27.0"
