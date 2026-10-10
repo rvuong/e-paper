@@ -8,16 +8,22 @@ use crate::freebox::Host;
 use crate::layout::PEOPLE;
 use crate::presence::is_home;
 use crate::rate::{DeviceRate, counter_delta, person_rate_bps, rate_bps};
-use crate::refresh::{HouseholdState, needs_refresh};
-use crate::saved::SavedState;
+use crate::refresh::HouseholdState;
+use crate::saved::{SavedState, Snapshot};
 use crate::state::{Person, person_state};
+use crate::update::{UpdateKind, plan_update};
 
 /// The daily forced refresh happens on the first cycle after this hour (UTC):
 /// 03:00 UTC is 04:00 in winter and 05:00 in summer in France.
 pub const DAILY_REFRESH_HOUR_UTC: i64 = 3;
 
-/// Whether the daily forced refresh is due: the last redraw happened before
-/// the most recent `DAILY_REFRESH_HOUR_UTC`.
+/// Rates are averaged over this window: the oldest reading of the counters
+/// within it is the reference. With a cycle every minute, a one-minute rate
+/// would follow every pause of a video.
+pub const RATE_WINDOW_SECS: i64 = 900;
+
+/// Whether the daily forced refresh is due: the last full refresh happened
+/// before the most recent `DAILY_REFRESH_HOUR_UTC`.
 pub fn daily_refresh_due(now: i64, last_full_refresh: Option<i64>) -> bool {
     const DAY: i64 = 86_400;
     let offset = DAILY_REFRESH_HOUR_UTC * 3_600;
@@ -30,6 +36,7 @@ pub struct CycleInput<'a> {
     /// Unix timestamp in seconds.
     pub now: i64,
     /// Presence window: the smartphone must have been active this recently.
+    /// Independent of the cycle period.
     pub interval_secs: i64,
     pub threshold_bps: u64,
     pub mapping: &'a Mapping,
@@ -39,22 +46,27 @@ pub struct CycleInput<'a> {
     pub counters: &'a BTreeMap<String, u64>,
     /// State left by the previous run, if any.
     pub previous: Option<&'a SavedState>,
-    /// Redraw even if nothing changed.
+    /// Whether the image shown on the display was saved (needed for a partial
+    /// refresh).
+    pub previous_frame: bool,
+    /// Full refresh even if nothing changed.
     pub force: bool,
+    /// False to always use full refreshes.
+    pub partial_enabled: bool,
 }
 
 /// What a cycle decides.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleOutput {
     pub household: HouseholdState,
-    /// Whether the display must be redrawn.
-    pub refresh: bool,
+    /// What to do with the display.
+    pub update: UpdateKind,
     /// State to save for the next run.
     pub saved: SavedState,
 }
 
 pub fn cycle(input: &CycleInput) -> CycleOutput {
-    let rates = device_rates(input);
+    let rates = device_rates(input, rate_reference(input.previous, input.now));
     let household: HouseholdState = PEOPLE
         .into_iter()
         .map(|person| {
@@ -70,12 +82,17 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
     let last_full_refresh = input
         .previous
         .and_then(|previous| previous.last_full_refresh);
-    let refresh = input.force
-        || needs_refresh(
-            input.previous.map(|previous| &previous.household),
-            &household,
-        )
-        || daily_refresh_due(input.now, last_full_refresh);
+    let partials_since_full = input
+        .previous
+        .map_or(0, |previous| previous.partials_since_full);
+    let update = plan_update(
+        input.previous.map(|previous| &previous.household),
+        &household,
+        input.previous_frame,
+        input.force || daily_refresh_due(input.now, last_full_refresh),
+        partials_since_full,
+        input.partial_enabled,
+    );
     let counters = input
         .counters
         .iter()
@@ -87,30 +104,70 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
             polled_at: input.now,
             household: household.clone(),
             counters,
-            last_full_refresh: if refresh {
+            last_full_refresh: if update == UpdateKind::Full {
                 Some(input.now)
             } else {
                 last_full_refresh
             },
+            partials_since_full: match update {
+                UpdateKind::Full => 0,
+                UpdateKind::Partial(_) => partials_since_full + 1,
+                UpdateKind::None => partials_since_full,
+            },
+            earlier: recent_snapshots(input.previous, input.now),
         },
         household,
-        refresh,
+        update,
     }
 }
 
-/// Rate of each assigned device seen during this poll. All zero on the first
-/// run, as there is no previous poll to measure from.
-fn device_rates(input: &CycleInput) -> Vec<DeviceRate> {
-    let Some(previous) = input.previous else {
+/// The readings of the previous runs still within the rate window, oldest
+/// first: the earlier ones the previous run kept, then its own.
+fn recent_snapshots(previous: Option<&SavedState>, now: i64) -> Vec<Snapshot> {
+    let Some(previous) = previous else {
         return Vec::new();
     };
-    let elapsed = input.now - previous.polled_at;
+    previous
+        .earlier
+        .iter()
+        .cloned()
+        .chain([Snapshot {
+            polled_at: previous.polled_at,
+            counters: previous.counters.clone(),
+        }])
+        .filter(|snapshot| now - snapshot.polled_at <= RATE_WINDOW_SECS)
+        .collect()
+}
+
+/// The reading rates are measured from: the oldest within the rate window, or
+/// the previous run's one if all are older (after a downtime). None on the
+/// first run.
+fn rate_reference(previous: Option<&SavedState>, now: i64) -> Option<Snapshot> {
+    let previous = previous?;
+    recent_snapshots(Some(previous), now)
+        .into_iter()
+        .next()
+        .or_else(|| {
+            Some(Snapshot {
+                polled_at: previous.polled_at,
+                counters: previous.counters.clone(),
+            })
+        })
+}
+
+/// Rate of each assigned device seen during this poll, since the reference
+/// reading. All zero on the first run, as there is nothing to measure from.
+fn device_rates(input: &CycleInput, reference: Option<Snapshot>) -> Vec<DeviceRate> {
+    let Some(reference) = reference else {
+        return Vec::new();
+    };
+    let elapsed = input.now - reference.polled_at;
     input
         .mapping
         .iter()
         .filter_map(|(mac, assignment)| {
             let current = *input.counters.get(mac)?;
-            let delta = counter_delta(previous.counters.get(mac).copied(), current);
+            let delta = counter_delta(reference.counters.get(mac).copied(), current);
             Some(DeviceRate {
                 owner: Some(assignment.person),
                 bps: rate_bps(delta, elapsed),
@@ -190,6 +247,8 @@ mod tests {
             household: PEOPLE.into_iter().map(|person| (person, Away)).collect(),
             counters: counters(values),
             last_full_refresh: Some(NOW - 900),
+            partials_since_full: 0,
+            earlier: Vec::new(),
         }
     }
 
@@ -207,7 +266,9 @@ mod tests {
             hosts,
             counters: &counters(now_counters),
             previous,
+            previous_frame: true,
             force,
+            partial_enabled: true,
         })
     }
 
@@ -295,14 +356,14 @@ mod tests {
 
     #[test]
     fn first_run_refreshes() {
-        assert!(run(&[], &[], None, false).refresh);
+        assert_eq!(run(&[], &[], None, false).update, UpdateKind::Full);
     }
 
     #[test]
     fn unchanged_state_does_not_refresh_unless_forced() {
         let before = previous(&[]);
-        assert!(!run(&[], &[], Some(&before), false).refresh);
-        assert!(run(&[], &[], Some(&before), true).refresh);
+        assert_eq!(run(&[], &[], Some(&before), false).update, UpdateKind::None);
+        assert_eq!(run(&[], &[], Some(&before), true).update, UpdateKind::Full);
     }
 
     #[test]
@@ -348,7 +409,7 @@ mod tests {
     fn unchanged_state_refreshes_when_the_daily_refresh_is_due() {
         let mut before = previous(&[]);
         before.last_full_refresh = Some(TODAY_03H - 60);
-        assert!(run(&[], &[], Some(&before), false).refresh);
+        assert_eq!(run(&[], &[], Some(&before), false).update, UpdateKind::Full);
     }
 
     #[test]
@@ -358,7 +419,90 @@ mod tests {
 
         let before = previous(&[]);
         let unchanged = run(&[], &[], Some(&before), false);
-        assert!(!unchanged.refresh);
+        assert_eq!(unchanged.update, UpdateKind::None);
         assert_eq!(unchanged.saved.last_full_refresh, before.last_full_refresh);
+    }
+
+    #[test]
+    fn partial_refresh_counts_and_full_refresh_resets_the_count() {
+        let mut before = previous(&[]);
+        before.partials_since_full = 4;
+        before.last_full_refresh = Some(NOW - 600);
+        let partial = run(&[host(R_PHONE, NOW - 60)], &[], Some(&before), false);
+        assert!(matches!(partial.update, UpdateKind::Partial(_)));
+        assert_eq!(partial.saved.partials_since_full, 5);
+        assert_eq!(partial.saved.last_full_refresh, Some(NOW - 600));
+
+        let unchanged = run(&[], &[], Some(&before), false);
+        assert_eq!(unchanged.saved.partials_since_full, 4);
+
+        let full = run(&[], &[], Some(&before), true);
+        assert_eq!(full.saved.partials_since_full, 0);
+        assert_eq!(full.saved.last_full_refresh, Some(NOW));
+    }
+
+    #[test]
+    fn rate_is_averaged_from_the_oldest_reading_in_the_window() {
+        // R's laptop downloaded at 6 Mb/s on average over the last 14 minutes,
+        // but nothing during the last minute: still active.
+        let total = 6_000_000 / 8 * 840;
+        let mut before = previous(&[(R_LAPTOP, total)]);
+        before.polled_at = NOW - 60;
+        before.earlier = vec![Snapshot {
+            polled_at: NOW - 840,
+            counters: counters(&[(R_LAPTOP, 0)]),
+        }];
+        let output = run(
+            &[host(R_PHONE, NOW - 60)],
+            &[(R_LAPTOP, total)],
+            Some(&before),
+            false,
+        );
+        assert_eq!(state_of(&output, 'R'), HomeActive);
+    }
+
+    #[test]
+    fn readings_older_than_the_window_are_dropped() {
+        let mut before = previous(&[(R_LAPTOP, 500)]);
+        before.polled_at = NOW - 60;
+        before.earlier = vec![
+            Snapshot {
+                polled_at: NOW - 1_200,
+                counters: counters(&[(R_LAPTOP, 100)]),
+            },
+            Snapshot {
+                polled_at: NOW - 600,
+                counters: counters(&[(R_LAPTOP, 300)]),
+            },
+        ];
+        let output = run(&[], &[(R_LAPTOP, 600)], Some(&before), false);
+        assert_eq!(
+            output.saved.earlier,
+            [
+                Snapshot {
+                    polled_at: NOW - 600,
+                    counters: counters(&[(R_LAPTOP, 300)]),
+                },
+                Snapshot {
+                    polled_at: NOW - 60,
+                    counters: counters(&[(R_LAPTOP, 500)]),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn after_a_downtime_the_previous_reading_is_the_reference() {
+        // Previous run an hour ago, nothing kept: 6 Mb/s over that hour.
+        let mut before = previous(&[(R_LAPTOP, 0)]);
+        before.polled_at = NOW - 3_600;
+        let output = run(
+            &[host(R_PHONE, NOW - 60)],
+            &[(R_LAPTOP, 6_000_000 / 8 * 3_600)],
+            Some(&before),
+            false,
+        );
+        assert_eq!(state_of(&output, 'R'), HomeActive);
+        assert!(output.saved.earlier.is_empty());
     }
 }

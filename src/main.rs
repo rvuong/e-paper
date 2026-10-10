@@ -6,20 +6,24 @@ use std::io::{self, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Parser, Subcommand};
 use e_paper::cycle::{CycleInput, cycle};
 use e_paper::devices;
-use e_paper::display::{Display, PngDisplay};
+use e_paper::display::{Display, PngDisplay, Update};
 use e_paper::epd;
 use e_paper::frame::Frame;
 use e_paper::freebox_client::Client;
 use e_paper::layout::{PEOPLE, layout};
 use e_paper::mockups::phase1_states;
+use e_paper::refresh::HouseholdState;
 use e_paper::render::{atkinson_bold, render};
 use e_paper::saved;
+use e_paper::state::PersonState::{Away, HomeActive, HomePassive};
 use e_paper::state::{ACTIVITY_THRESHOLD_BPS, PersonState};
+use e_paper::update::{UpdateKind, changed_window};
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -64,12 +68,16 @@ enum Command {
         state: PathBuf,
         #[command(flatten)]
         output: Output,
-        /// Presence window in seconds: the cycle period.
+        /// Presence window in seconds: a smartphone active this recently is
+        /// home. Independent of the cycle period.
         #[arg(long, default_value_t = 900)]
         interval: i64,
-        /// Redraw even if nothing changed.
+        /// Full refresh even if nothing changed.
         #[arg(long)]
         force: bool,
+        /// Never use partial refreshes.
+        #[arg(long)]
+        full_only: bool,
     },
     /// Shows the phase 1 mockup with an activity ring (legibility test).
     TestPattern {
@@ -78,6 +86,12 @@ enum Command {
     },
     /// Clears the e-paper panel to white.
     Clear,
+    /// Checks partial refresh on the panel: one full refresh, then a few
+    /// partial ones, 5 s apart.
+    PartialTest {
+        #[command(flatten)]
+        output: Output,
+    },
 }
 
 /// Where to show the display.
@@ -133,8 +147,12 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
             output,
             interval,
             force,
-        } => run_cycle(&token, &devices, &state, &output, interval, force),
+            full_only,
+        } => run_cycle(
+            &token, &devices, &state, &output, interval, force, !full_only,
+        ),
         Command::TestPattern { output } => test_pattern(&output),
+        Command::PartialTest { output } => partial_test(&output),
         Command::Clear => {
             epd::linux::open()?.clear()?;
             println!("Panel cleared");
@@ -189,6 +207,7 @@ fn run_cycle(
     output_target: &Output,
     interval_secs: i64,
     force: bool,
+    partial_enabled: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mapping = read_mapping(devices_path)?;
     let app_token = read_token(token_path)?;
@@ -196,6 +215,12 @@ fn run_cycle(
     if let Some(warning) = warning {
         eprintln!("warning: {warning}");
     }
+    // The image on the display, kept next to the state: a partial refresh
+    // sends it again, as the panel forgets it between runs.
+    let frame_path = state_path.with_file_name("frame.png");
+    let previous_frame = fs::read(&frame_path)
+        .ok()
+        .and_then(|bytes| Frame::from_png(&bytes).ok());
 
     let mut client = Client::connect()?;
     client.login(&app_token)?;
@@ -211,7 +236,9 @@ fn run_cycle(
         hosts: &hosts,
         counters: &counters,
         previous: previous.as_ref(),
+        previous_frame: previous_frame.is_some(),
         force,
+        partial_enabled,
     });
     let states: Vec<String> = PEOPLE
         .iter()
@@ -219,13 +246,25 @@ fn run_cycle(
         .collect();
     println!("{}", states.join(", "));
 
-    if output.refresh {
-        let mut frame = Frame::new();
-        render(&mut frame, &layout(&output.household), &atkinson_bold())?;
-        output_target.open()?.show(&frame)?;
-        println!("Display redrawn: {}", output_target.describe());
-    } else {
-        println!("No change: display not touched");
+    let update = match (output.update, &previous_frame) {
+        (UpdateKind::None, _) => None,
+        (UpdateKind::Partial(window), Some(previous)) => Some(Update::Partial { previous, window }),
+        _ => Some(Update::Full),
+    };
+    match update {
+        None => println!("No change: display not touched"),
+        Some(update) => {
+            let mut frame = Frame::new();
+            render(&mut frame, &layout(&output.household), &atkinson_bold())?;
+            output_target.open()?.show(&frame, update)?;
+            fs::write(&frame_path, frame.to_png())
+                .map_err(|error| format!("cannot write {}: {error}", frame_path.display()))?;
+            let kind = match update {
+                Update::Full => "full",
+                Update::Partial { .. } => "partial",
+            };
+            println!("Display redrawn ({kind}): {}", output_target.describe());
+        }
     }
     saved::save(state_path, &output.saved)
         .map_err(|error| format!("cannot write {}: {error}", state_path.display()))?;
@@ -239,8 +278,49 @@ fn test_pattern(output: &Output) -> Result<(), Box<dyn Error>> {
         .expect("mockup exists");
     let mut frame = Frame::new();
     render(&mut frame, &layout(&state), &atkinson_bold())?;
-    output.open()?.show(&frame)?;
+    output.open()?.show(&frame, Update::Full)?;
     println!("Test pattern shown: {}", output.describe());
+    Ok(())
+}
+
+fn partial_test(output: &Output) -> Result<(), Box<dyn Error>> {
+    let household =
+        |states: [PersonState; 4]| -> HouseholdState { PEOPLE.into_iter().zip(states).collect() };
+    let steps = [
+        ("R home", household([HomePassive, Away, Away, Away])),
+        (
+            "H home (active)",
+            household([HomePassive, Away, HomeActive, Away]),
+        ),
+        (
+            "R away, L home",
+            household([Away, Away, HomeActive, HomePassive]),
+        ),
+        ("everybody away", household([Away; 4])),
+    ];
+    let font = atkinson_bold();
+    let mut display = output.open()?;
+    let mut shown = Frame::new();
+    render(&mut shown, &layout(&household([Away; 4])), &font)?;
+    display.show(&shown, Update::Full)?;
+    println!("Full refresh: everybody away");
+    let mut previous_state = household([Away; 4]);
+    for (name, state) in steps {
+        thread::sleep(Duration::from_secs(5));
+        let window = changed_window(&previous_state, &state).expect("each step changes a slot");
+        let mut frame = Frame::new();
+        render(&mut frame, &layout(&state), &font)?;
+        display.show(
+            &frame,
+            Update::Partial {
+                previous: &shown,
+                window,
+            },
+        )?;
+        println!("Partial refresh: {name}");
+        shown = frame;
+        previous_state = state;
+    }
     Ok(())
 }
 

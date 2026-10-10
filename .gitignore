@@ -6,6 +6,7 @@
 /config.toml
 /devices.toml
 /state.json
+/frame.png
 /secrets/
 
 # IDE

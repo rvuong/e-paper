@@ -22,6 +22,22 @@ pub struct SavedState {
     /// from state files written before it existed.
     #[serde(default)]
     pub last_full_refresh: Option<i64>,
+    /// Partial refreshes since the last full one.
+    #[serde(default)]
+    pub partials_since_full: u32,
+    /// Earlier readings of the counters, still within the rate window, oldest
+    /// first (rates are averaged over that window).
+    #[serde(default)]
+    pub earlier: Vec<Snapshot>,
+}
+
+/// The download counters of the assigned devices at one poll.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Snapshot {
+    /// Unix timestamp in seconds.
+    pub polled_at: i64,
+    /// `tx_bytes` by MAC.
+    pub counters: BTreeMap<String, u64>,
 }
 
 /// Reads the saved state. A missing file means no previous state. An
@@ -71,6 +87,13 @@ mod tests {
                 .into_iter()
                 .collect(),
             last_full_refresh: Some(1_759_990_000),
+            partials_since_full: 3,
+            earlier: vec![Snapshot {
+                polled_at: 1_759_999_400,
+                counters: [("02:00:00:00:00:02".to_string(), 1_100_000_000)]
+                    .into_iter()
+                    .collect(),
+            }],
         }
     }
 

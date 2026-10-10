@@ -110,6 +110,45 @@ fn slot(person: Person, person_state: PersonState, center: Point) -> Slot {
     }
 }
 
+/// A rectangle of the display. `x` and `width` are multiples of 8: the panel
+/// receives 8 pixels per byte.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Window {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Window {
+    /// The smallest window holding both.
+    pub fn union(self, other: Window) -> Window {
+        let (x, y) = (self.x.min(other.x), self.y.min(other.y));
+        let right = (self.x + self.width).max(other.x + other.width);
+        let bottom = (self.y + self.height).max(other.y + other.height);
+        Window {
+            x,
+            y,
+            width: right - x,
+            height: bottom - y,
+        }
+    }
+}
+
+/// The window of a slot: its whole square (rings included), widened to
+/// multiples of 8 horizontally.
+pub fn slot_window(slot: &Slot) -> Window {
+    let half = SLOT as i32 / 2;
+    let left = (slot.center.x - half) as u32 / 8 * 8;
+    let right = ((slot.center.x + half) as u32).div_ceil(8) * 8;
+    Window {
+        x: left,
+        y: (slot.center.y - half) as u32,
+        width: right - left,
+        height: SLOT,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,5 +265,51 @@ mod tests {
         }
         assert_eq!(slots[0].center.x - 178 / 2, 20);
         assert_eq!(slots[3].center.x + 178 / 2, 780);
+    }
+
+    #[test]
+    fn slot_window_covers_the_whole_slot_aligned_on_8_pixels() {
+        let slots = layout(&household([Away; 4]));
+        // R: slot from x = 20 to 198, widened to 16..200; y from 151 to 329.
+        assert_eq!(
+            slot_window(&slots[0]),
+            Window {
+                x: 16,
+                y: 151,
+                width: 184,
+                height: 178
+            }
+        );
+        for slot in &slots {
+            let window = slot_window(slot);
+            assert_eq!((window.x % 8, window.width % 8), (0, 0));
+            assert!(window.x as i32 <= slot.center.x - 89);
+            assert!((window.x + window.width) as i32 >= slot.center.x + 89);
+        }
+    }
+
+    #[test]
+    fn union_of_windows_holds_both() {
+        let a = Window {
+            x: 16,
+            y: 151,
+            width: 184,
+            height: 178,
+        };
+        let b = Window {
+            x: 600,
+            y: 100,
+            width: 184,
+            height: 178,
+        };
+        assert_eq!(
+            a.union(b),
+            Window {
+                x: 16,
+                y: 100,
+                width: 768,
+                height: 229
+            }
+        );
     }
 }

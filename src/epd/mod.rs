@@ -15,7 +15,7 @@ use embedded_hal::digital::{InputPin, OutputPin};
 use embedded_hal::spi::SpiDevice;
 
 use crate::frame::Frame;
-use crate::layout::{HEIGHT, WIDTH};
+use crate::layout::{HEIGHT, WIDTH, Window};
 
 /// Give up waiting for the panel after this long.
 const BUSY_TIMEOUT_MS: u32 = 30_000;
@@ -23,6 +23,26 @@ const BUSY_TIMEOUT_MS: u32 = 30_000;
 const BUSY_POLL_MS: u32 = 10;
 /// Largest SPI write: the default `spidev` buffer size.
 const SPI_CHUNK: usize = 4096;
+
+/// Partial refresh waveforms (GxEPD2, `GxEPD2_750_T7`, "fast partial update"):
+/// one phase per table, `[voltage levels, frames ×4, repeat]`, the rest of each
+/// 42-byte table at 0. White to white and black to black are empty: pixels
+/// that keep their colour are not driven.
+const PARTIAL_WAVEFORMS: [(u8, [u8; 6]); 6] = [
+    (0x20, [0x00, 30, 5, 30, 5, 1]), // VCOM
+    (0x21, [0x00, 30, 5, 30, 5, 1]), // white to white
+    (0x22, [0x5a, 30, 5, 30, 5, 1]), // black to white
+    (0x23, [0x84, 30, 5, 30, 5, 1]), // white to black
+    (0x24, [0x00, 30, 5, 30, 5, 1]), // black to black
+    (0x25, [0x00, 30, 5, 30, 5, 1]), // border
+];
+
+/// A 42-byte waveform register: the given phase, then zeros.
+fn waveform_table(phase: [u8; 6]) -> [u8; 42] {
+    let mut table = [0u8; 42];
+    table[..6].copy_from_slice(&phase);
+    table
+}
 
 /// What can go wrong with the panel.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,6 +81,18 @@ pub fn panel_buffer(frame: &Frame) -> Vec<u8> {
         }
     }
     buffer
+}
+
+/// The bytes of `buffer` (a whole panel buffer) inside the window, row by row.
+pub fn window_buffer(buffer: &[u8], window: Window) -> Vec<u8> {
+    let row_bytes = (WIDTH / 8) as usize;
+    let (first, count) = ((window.x / 8) as usize, (window.width / 8) as usize);
+    (window.y..window.y + window.height)
+        .flat_map(|y| {
+            let start = y as usize * row_bytes + first;
+            buffer[start..start + count].iter().copied()
+        })
+        .collect()
 }
 
 /// The panel and the pins of its HAT.
@@ -129,6 +161,76 @@ where
         self.command(0x12)?; // display refresh
         self.delay.delay_ms(100);
         self.wait_busy()
+    }
+
+    /// Powers the HAT, resets the panel and loads the partial refresh
+    /// waveforms into the controller's registers.
+    ///
+    /// The partial waveform built into the controller (selected by a forced
+    /// temperature, as in the Waveshare driver) pulses every pixel of the
+    /// window: the whole window flashes. These waveforms, from the GxEPD2
+    /// library (`GxEPD2_750_T7`), do not drive the pixels that keep their
+    /// colour (white to white, black to black): only the changed pixels move.
+    pub fn init_part(&mut self) -> Result<(), EpdError> {
+        self.power_on_and_reset()?;
+        self.command(0x01)?; // power setting: VGH 20 V, VGL -20 V, VDH 15 V, VDL -15 V
+        self.data(&[0x07, 0x07, 0x3f, 0x3f])?;
+        self.command(0x00)?; // panel setting: black and white, waveforms from the registers
+        self.data(&[0x3f])?;
+        self.command(0x61)?; // resolution: 800 (0x0320) × 480 (0x01e0)
+        self.data(&[0x03, 0x20, 0x01, 0xe0])?;
+        self.command(0x15)?;
+        self.data(&[0x00])?;
+        // VCOM and data interval: bit 1 is white in both images, border from
+        // its (empty) waveform, the controller copies the new image into the
+        // previous one after a refresh.
+        self.command(0x50)?;
+        self.data(&[0x39, 0x07])?;
+        self.command(0x60)?; // TCON
+        self.data(&[0x22])?;
+        self.command(0x82)?; // VCOM DC: -2.0 V
+        self.data(&[0x26])?;
+        for (command, table) in PARTIAL_WAVEFORMS {
+            self.command(command)?;
+            self.data(&waveform_table(table))?;
+        }
+        self.command(0x04)?; // power on
+        self.delay.delay_ms(100);
+        self.wait_busy()
+    }
+
+    /// Partial refresh of the window, from `previous` (the image on the panel)
+    /// to `frame`: only the pixels that differ move, without flashing.
+    ///
+    /// Both images are sent (the panel forgets the previous one when its power
+    /// is cut between runs), with bit 1 for white, as set by `init_part`.
+    pub fn display_partial(
+        &mut self,
+        previous: &Frame,
+        frame: &Frame,
+        window: Window,
+    ) -> Result<(), EpdError> {
+        // Both images with 1 for white: the inverse of `panel_buffer`.
+        let white_is_one = |image: &Frame| -> Vec<u8> {
+            window_buffer(&panel_buffer(image), window)
+                .iter()
+                .map(|byte| !byte)
+                .collect()
+        };
+        let (old, new) = (white_is_one(previous), white_is_one(frame));
+        let (x_end, y_end) = (window.x + window.width - 1, window.y + window.height - 1);
+        let [x0, x1, y0, y1] = [window.x, x_end, window.y, y_end].map(|value| value.to_be_bytes());
+        self.command(0x91)?; // partial in
+        self.command(0x90)?; // partial window
+        self.data(&[x0[2], x0[3], x1[2], x1[3], y0[2], y0[3], y1[2], y1[3], 0x01])?;
+        self.command(0x10)?; // previous image
+        self.data(&old)?;
+        self.command(0x13)?; // new image
+        self.data(&new)?;
+        self.command(0x12)?; // display refresh
+        self.delay.delay_ms(100);
+        self.wait_busy()?;
+        self.command(0x92) // partial out
     }
 
     /// Full refresh with a white frame.
@@ -417,6 +519,101 @@ mod tests {
                 Event::Spi(vec![0x12]),
                 Event::Pin("DC", true),
                 Event::Spi(vec![0x01, 0x02]),
+            ]
+        );
+    }
+
+    /// The slot of R, as in the layout.
+    const R_WINDOW: Window = Window {
+        x: 16,
+        y: 151,
+        width: 184,
+        height: 178,
+    };
+
+    #[test]
+    fn window_buffer_keeps_the_bytes_inside_the_window() {
+        let buffer: Vec<u8> = (0..BUFFER_SIZE).map(|i| (i % 251) as u8).collect();
+        let bytes = window_buffer(&buffer, R_WINDOW);
+        // 184 px = 23 bytes per row, 178 rows.
+        assert_eq!(bytes.len(), 23 * 178);
+        // First byte: row 151, byte column 16 / 8 = 2.
+        assert_eq!(bytes[0], buffer[151 * 100 + 2]);
+        // Last byte: row 328, byte column 24.
+        assert_eq!(bytes[bytes.len() - 1], buffer[328 * 100 + 24]);
+    }
+
+    #[test]
+    fn init_part_loads_waveforms_that_leave_unchanged_pixels_alone() {
+        let (mut epd, log) = fake_epd([], true);
+        epd.init_part().unwrap();
+        let data = |bytes: &[u8]| Op::Data(bytes.to_vec());
+        let lut = |first: u8| {
+            let mut table = vec![0u8; 42];
+            table[..6].copy_from_slice(&[first, 30, 5, 30, 5, 1]);
+            Op::Data(table)
+        };
+        assert_eq!(ops(&log.events())[0], Op::Pin("PWR", true));
+        assert_eq!(
+            ops(&log.events())[7..],
+            [
+                Op::Command(0x01), // power setting
+                data(&[0x07, 0x07, 0x3f, 0x3f]),
+                Op::Command(0x00), // panel setting: waveforms from the registers
+                data(&[0x3f]),
+                Op::Command(0x61), // resolution 800×480
+                data(&[0x03, 0x20, 0x01, 0xe0]),
+                Op::Command(0x15),
+                data(&[0x00]),
+                Op::Command(0x50), // VCOM and data interval: 1 is white, copy new to old
+                data(&[0x39, 0x07]),
+                Op::Command(0x60), // TCON
+                data(&[0x22]),
+                Op::Command(0x82), // VCOM DC: -2.0 V
+                data(&[0x26]),
+                Op::Command(0x20), // VCOM waveform
+                lut(0x00),
+                Op::Command(0x21), // white to white: no drive
+                lut(0x00),
+                Op::Command(0x22), // black to white
+                lut(0x5a),
+                Op::Command(0x23), // white to black
+                lut(0x84),
+                Op::Command(0x24), // black to black: no drive
+                lut(0x00),
+                Op::Command(0x25), // border: no drive
+                lut(0x00),
+                Op::Command(0x04), // power on
+                Op::DelayMs(100),
+                Op::Command(0x71),
+                Op::DelayMs(20),
+            ]
+        );
+    }
+
+    #[test]
+    fn display_partial_sends_the_window_and_both_images() {
+        let (mut epd, log) = fake_epd([], true);
+        let frame = frame_with_black(&[(16, 151)]);
+        epd.display_partial(&Frame::new(), &frame, R_WINDOW)
+            .unwrap();
+        let mut new = vec![0xff; 23 * 178];
+        new[0] = 0x7f; // the black pixel, with 1 for white
+        assert_eq!(
+            ops(&log.events()),
+            [
+                Op::Command(0x91), // partial in
+                Op::Command(0x90), // partial window: x 16..199, y 151..328
+                Op::Data(vec![0x00, 0x10, 0x00, 0xc7, 0x00, 0x97, 0x01, 0x48, 0x01]),
+                Op::Command(0x10), // previous image, 1 for white: all white
+                Op::Data(vec![0xff; 23 * 178]),
+                Op::Command(0x13), // new image, 1 for white
+                Op::Data(new),
+                Op::Command(0x12), // display refresh
+                Op::DelayMs(100),
+                Op::Command(0x71),
+                Op::DelayMs(20),
+                Op::Command(0x92), // partial out
             ]
         );
     }
