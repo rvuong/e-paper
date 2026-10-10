@@ -15,9 +15,9 @@ done; what remains is the activation on the Raspberry Pi (section "On the Pi").
   `--force`, the daily refresh (first cycle after 03:00 UTC), no saved state,
   no saved image, or `PARTIALS_BEFORE_FULL` (10) partial refreshes in a row
   (partial refreshes leave a faint trace of the previous image: ghosting).
-- **Presence window unchanged** (15 min, option `--interval`): it is
-  independent of the cycle period, so a phone asleep for a few minutes still
-  counts as home.
+- **Presence window** (option `--interval`): independent of the cycle period,
+  so a phone asleep for a few minutes still counts as home. Lowered from 15 to
+  5 minutes on 2026-10-10 (departures took too long to show).
 - **Rates averaged over 15 min** (`RATE_WINDOW_SECS`): the state keeps the
   readings of the counters of the last 15 minutes, and the rate is measured
   from the oldest one. Otherwise the activity mark would follow every pause of

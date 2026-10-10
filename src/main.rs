@@ -70,7 +70,7 @@ enum Command {
         output: Output,
         /// Presence window in seconds: a smartphone active this recently is
         /// home. Independent of the cycle period.
-        #[arg(long, default_value_t = 900)]
+        #[arg(long, default_value_t = 300)]
         interval: i64,
         /// Full refresh even if nothing changed.
         #[arg(long)]
