@@ -1,20 +1,22 @@
-//! Renders the phase 1 mockup states (`docs/mockups/phase1-*.svg`).
+//! Renders the mockup states (`docs/mockups/*.svg`).
 //!
 //! ```text
 //! cargo run --example mockups -- png [DIR]   write the PNGs (default: target/mockups)
 //! cargo run --example mockups -- show NAME   open one state in the simulator
 //! ```
 //!
-//! NAME is one of `phase1-r-home`, `phase1-all-away`, `phase1-activity-ring`.
+//! NAME is one of `phase1-r-home`, `phase1-all-away`, `phase1-activity-ring`,
+//! `phase2-buses-presence`.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::{env, fs};
 
+use e_paper::board::board_layout;
 use e_paper::frame::Frame;
 use e_paper::layout::{HEIGHT, WIDTH, layout};
-use e_paper::mockups::phase1_states;
-use e_paper::render::{atkinson_bold, render};
+use e_paper::mockups::{phase1_states, phase2_state};
+use e_paper::render::{atkinson_bold, render, render_board};
 use embedded_graphics::pixelcolor::{BinaryColor, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics_simulator::{
@@ -48,16 +50,32 @@ fn write_pngs(dir: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         fs::write(&path, frame.to_png())?;
         println!("{}", path.display());
     }
+    let (name, board, household) = phase2_state();
+    let mut frame = Frame::new();
+    render_board(&mut frame, &board_layout(&board, &household, &font), &font)?;
+    let path = dir.join(format!("{name}.png"));
+    fs::write(&path, frame.to_png())?;
+    println!("{}", path.display());
     Ok(())
 }
 
 fn show(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let (_, state) = phase1_states()
-        .into_iter()
-        .find(|(candidate, _)| *candidate == name)
-        .ok_or(format!("unknown mockup: {name}"))?;
+    let font = atkinson_bold();
     let mut display = SimulatorDisplay::<BinaryColor>::new(Size::new(WIDTH, HEIGHT));
-    render(&mut display, &layout(&state), &atkinson_bold())?;
+    let (phase2_name, board, household) = phase2_state();
+    if name == phase2_name {
+        render_board(
+            &mut display,
+            &board_layout(&board, &household, &font),
+            &font,
+        )?;
+    } else {
+        let (_, state) = phase1_states()
+            .into_iter()
+            .find(|(candidate, _)| *candidate == name)
+            .ok_or(format!("unknown mockup: {name}"))?;
+        render(&mut display, &layout(&state), &font)?;
+    }
     let settings = OutputSettingsBuilder::new()
         .theme(BinaryColorTheme::Custom {
             color_off: Rgb888::WHITE,

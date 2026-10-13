@@ -19,11 +19,25 @@ pub const PEOPLE: [Person; 4] = [Person('R'), Person('M'), Person('H'), Person('
 
 const SLOT: u32 = 178;
 const GAP: u32 = 16;
-const CORE_DIAMETER: u32 = 130;
-const CORE_STROKE: u32 = 12;
-const RING_DIAMETERS: [u32; 2] = [154, 178];
-const RING_STROKE: u32 = 6;
-const LETTER_SIZE: u32 = 88;
+const PHASE1_SIZES: SlotSizes = SlotSizes {
+    core_diameter: 130,
+    core_stroke: 12,
+    ring_diameters: [154, 178],
+    ring_stroke: 6,
+    letter_size: 88,
+};
+
+/// Sizes of a person's circles and letter: the phase 1 row and the phase 2
+/// column draw the same shapes at different sizes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlotSizes {
+    pub core_diameter: u32,
+    pub core_stroke: u32,
+    /// Inner ring first.
+    pub ring_diameters: [u32; 2],
+    pub ring_stroke: u32,
+    pub letter_size: u32,
+}
 
 /// Colour of a pixel on the 1-bit panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,19 +88,22 @@ pub fn layout(state: &HouseholdState) -> Vec<Slot> {
                 person,
                 person_state,
                 Point::new(x as i32, HEIGHT as i32 / 2),
+                &PHASE1_SIZES,
             )
         })
         .collect()
 }
 
-fn slot(person: Person, person_state: PersonState, center: Point) -> Slot {
+/// Everything drawn for one person, centred on `center`.
+pub fn slot(person: Person, person_state: PersonState, center: Point, sizes: &SlotSizes) -> Slot {
     let home = person_state != PersonState::Away;
     let rings = if person_state == PersonState::HomeActive {
-        RING_DIAMETERS
+        sizes
+            .ring_diameters
             .into_iter()
             .map(|diameter| Circle {
                 diameter,
-                stroke_width: RING_STROKE,
+                stroke_width: sizes.ring_stroke,
                 filled: false,
             })
             .collect()
@@ -97,14 +114,14 @@ fn slot(person: Person, person_state: PersonState, center: Point) -> Slot {
         person,
         center,
         core: Circle {
-            diameter: CORE_DIAMETER,
-            stroke_width: CORE_STROKE,
+            diameter: sizes.core_diameter,
+            stroke_width: sizes.core_stroke,
             filled: home,
         },
         rings,
         letter: Letter {
             glyph: person.0,
-            size: LETTER_SIZE,
+            size: sizes.letter_size,
             ink: if home { Ink::White } else { Ink::Black },
         },
     }

@@ -1,10 +1,13 @@
-//! Draws the phase 1 layout as black and white pixels.
+//! Draws the layouts (phase 1 row, phase 2 board) as black and white pixels.
 
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{self, PrimitiveStyleBuilder, StrokeAlignment};
-use fontdue::{Font, FontSettings};
+use embedded_graphics::primitives::{
+    self, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, RoundedRectangle, StrokeAlignment,
+};
+use fontdue::{Font, FontSettings, Metrics};
 
+use crate::board::{BoardLayout, Element, Rect, Text};
 use crate::layout::{Circle, Ink, Slot};
 
 const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/AtkinsonHyperlegible-Bold.ttf");
@@ -40,13 +43,38 @@ where
 {
     target.clear(BinaryColor::Off)?;
     for slot in slots {
-        for ring in &slot.rings {
-            draw_circle(target, slot.center, ring)?;
-        }
-        draw_circle(target, slot.center, &slot.core)?;
-        draw_letter(target, slot, font)?;
+        draw_slot(target, slot, font)?;
     }
     Ok(())
+}
+
+/// Clears the target to white, then draws the phase 2 board.
+pub fn render_board<D>(target: &mut D, board: &BoardLayout, font: &Font) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
+    target.clear(BinaryColor::Off)?;
+    for element in &board.elements {
+        match element {
+            Element::Rect(rect) => draw_rect(target, rect)?,
+            Element::Text(text) => draw_text(target, text, font)?,
+        }
+    }
+    for slot in &board.slots {
+        draw_slot(target, slot, font)?;
+    }
+    Ok(())
+}
+
+fn draw_slot<D>(target: &mut D, slot: &Slot, font: &Font) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
+    for ring in &slot.rings {
+        draw_circle(target, slot.center, ring)?;
+    }
+    draw_circle(target, slot.center, &slot.core)?;
+    draw_letter(target, slot, font)
 }
 
 fn color(ink: Ink) -> BinaryColor {
@@ -84,10 +112,59 @@ where
     let size = letter.size as f32;
     let (x, baseline) = letter_origin(font, letter.glyph, size, slot.center);
     let (metrics, coverage) = font.rasterize(letter.glyph, size);
+    draw_glyph(target, &metrics, &coverage, x, baseline, letter.ink)
+}
+
+fn draw_rect<D>(target: &mut D, rect: &Rect) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
+    let area = Rectangle::new(
+        Point::new(rect.x, rect.y),
+        Size::new(rect.width, rect.height),
+    );
+    RoundedRectangle::with_equal_corners(area, Size::new(rect.radius, rect.radius))
+        .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
+        .draw(target)
+}
+
+/// Draws a line of text glyph by glyph, each one advancing the pen by its
+/// advance width (no kerning, as in the mockup export).
+fn draw_text<D>(target: &mut D, text: &Text, font: &Font) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
+    let size = text.size as f32;
+    let line = font
+        .horizontal_line_metrics(size)
+        .expect("embedded font has horizontal metrics");
+    // CSS line box: the glyph box (ascent + |descent|) centred in `line_height`.
+    let baseline = text.top + (text.line_height - (line.ascent - line.descent)) / 2.0 + line.ascent;
+    let mut pen = text.left;
+    for glyph in text.text.chars() {
+        let (metrics, coverage) = font.rasterize(glyph, size);
+        draw_glyph(target, &metrics, &coverage, pen, baseline, text.ink)?;
+        pen += metrics.advance_width;
+    }
+    Ok(())
+}
+
+/// Draws the pixels a glyph covers enough, its advance starting at `x`.
+fn draw_glyph<D>(
+    target: &mut D,
+    metrics: &Metrics,
+    coverage: &[u8],
+    x: f32,
+    baseline: f32,
+    ink: Ink,
+) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
     // fontdue's `ymin` is the bitmap's bottom edge, upwards from the baseline.
     let left = (x + metrics.xmin as f32).round() as i32;
     let top = (baseline - (metrics.ymin + metrics.height as i32) as f32).round() as i32;
-    let ink = color(letter.ink);
+    let ink = color(ink);
     let pixels = coverage
         .iter()
         .enumerate()
@@ -192,6 +269,103 @@ mod tests {
             (400, 460),
         ] {
             assert!(!frame.is_black(x, y), "({x}, {y}) is black");
+        }
+    }
+
+    // D. Phase 2 board
+
+    mod board {
+        use super::*;
+        use crate::board::{Board, Time, board_layout};
+        use crate::state::Person;
+
+        fn at(hour: u8, minute: u8) -> Time {
+            Time { hour, minute }
+        }
+
+        fn rendered_board(rungis: Vec<Time>, antony: Vec<Time>) -> Frame {
+            let font = atkinson_bold();
+            let board = Board {
+                clock: at(8, 4),
+                rungis,
+                antony,
+            };
+            let household: HouseholdState = [(Person('R'), HomePassive), (Person('H'), HomeActive)]
+                .into_iter()
+                .collect();
+            let mut frame = Frame::new();
+            render_board(&mut frame, &board_layout(&board, &household, &font), &font).unwrap();
+            frame
+        }
+
+        fn black_pixels(
+            frame: &Frame,
+            xs: std::ops::Range<i32>,
+            ys: std::ops::Range<i32>,
+        ) -> Vec<(i32, i32)> {
+            ys.flat_map(|y| xs.clone().map(move |x| (x, y)))
+                .filter(|&(x, y)| frame.is_black(x, y))
+                .collect()
+        }
+
+        #[test]
+        fn tags_are_white_text_on_black() {
+            let frame = rendered_board(vec![], vec![]);
+            // The 319 tag: x from 24, y 126 to 162; its left padding is black.
+            assert!(frame.is_black(28, 144));
+            // Inside the tag, the text is white.
+            let white = 34 * 28 - black_pixels(&frame, 36..70, 130..158).len();
+            assert!(white > 100, "{white} white pixels in the tag");
+        }
+
+        #[test]
+        fn separators_are_drawn() {
+            let frame = rendered_board(vec![], vec![]);
+            assert!(frame.is_black(300, 93));
+            assert!(frame.is_black(632, 200));
+            assert!(frame.is_black(632, 93));
+            assert!(!frame.is_black(632, 40));
+            assert!(!frame.is_black(632, 440));
+        }
+
+        #[test]
+        fn times_are_right_aligned_in_pixels() {
+            let frame = rendered_board(vec![at(8, 8), at(8, 31)], vec![]);
+            let rightmost = black_pixels(&frame, 24..300, 172..268)
+                .iter()
+                .map(|&(x, _)| x)
+                .max()
+                .unwrap();
+            assert!((291..=299).contains(&rightmost), "ends at x = {rightmost}");
+        }
+
+        #[test]
+        fn no_departure_mark_is_drawn() {
+            let frame = rendered_board(vec![at(8, 8)], vec![]);
+            // Second Rungis cell, and both Antony cells.
+            for (xs, ys) in [
+                (331..607, 172..268),
+                (24..300, 348..444),
+                (331..607, 348..444),
+            ] {
+                let ink = black_pixels(&frame, xs.clone(), ys).len();
+                assert!(ink > 200, "{ink} black pixels in cell {xs:?}");
+            }
+        }
+
+        #[test]
+        fn phase_2_background_is_white() {
+            let frame = rendered_board(vec![at(8, 8), at(8, 31)], vec![at(8, 12), at(8, 21)]);
+            for (x, y) in [
+                (0, 0),
+                (799, 0),
+                (0, 479),
+                (799, 479),
+                (300, 284),
+                (650, 240),
+            ] {
+                assert!(!frame.is_black(x, y), "({x}, {y}) is black");
+            }
         }
     }
 }

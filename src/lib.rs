@@ -1,5 +1,6 @@
 //! Household e-paper dashboard.
 
+pub mod board;
 pub mod cycle;
 pub mod devices;
 pub mod diagnose;
