@@ -9,6 +9,7 @@
 /frame.png
 /usage.csv
 /secrets/
+/bus-log/
 
 # IDE
 /.idea/

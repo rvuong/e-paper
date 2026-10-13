@@ -20,6 +20,8 @@ use e_paper::freebox;
 use e_paper::freebox_client::Client;
 use e_paper::layout::{PEOPLE, layout};
 use e_paper::mockups::phase1_states;
+use e_paper::prim::{self, Stop};
+use e_paper::prim_client;
 use e_paper::refresh::HouseholdState;
 use e_paper::render::{atkinson_bold, render};
 use e_paper::saved;
@@ -101,6 +103,19 @@ enum Command {
         #[command(flatten)]
         output: Output,
     },
+    /// Logs the raw answers of the PRIM next departures API, one JSON line
+    /// per stop and poll (observation before phase 2).
+    BusLog {
+        /// The PRIM API key (a secret).
+        #[arg(long, default_value = "secrets/prim_api_key")]
+        key: PathBuf,
+        /// A stop to poll, as label=reference; repeat for each stop.
+        #[arg(long = "stop", value_parser = prim::parse_stop, required = true)]
+        stops: Vec<Stop>,
+        /// Folder of the logs, one `<label>.jsonl` file per stop.
+        #[arg(long, default_value = "bus-log")]
+        dir: PathBuf,
+    },
     /// Clears the e-paper panel to white.
     Clear,
     /// Checks partial refresh on the panel: one full refresh, then a few
@@ -179,6 +194,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
         ),
         Command::TestPattern { output } => test_pattern(&output),
         Command::PartialTest { output } => partial_test(&output),
+        Command::BusLog { key, stops, dir } => bus_log(&key, &stops, &dir),
         Command::Clear => {
             epd::linux::open()?.clear()?;
             println!("Panel cleared");
@@ -407,6 +423,35 @@ fn read_mapping(path: &Path) -> Result<devices::Mapping, Box<dyn Error>> {
         )
     })?;
     Ok(devices::parse_mapping(&text)?)
+}
+
+fn bus_log(key_path: &Path, stops: &[Stop], dir: &Path) -> Result<(), Box<dyn Error>> {
+    let key = fs::read_to_string(key_path)
+        .map_err(|error| format!("cannot read {}: {error}", key_path.display()))?;
+    let client = prim_client::Client::new(prim::api_key(&key)?);
+    fs::create_dir_all(dir)?;
+    for stop in stops {
+        let polled_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let line = match client.stop_monitoring(&stop.monitoring_ref) {
+            Ok(answer) => {
+                println!(
+                    "{}: HTTP {}, {} bytes",
+                    stop.label,
+                    answer.status,
+                    answer.body.len()
+                );
+                prim::log_line(polled_at, answer.status, &answer.body)
+            }
+            Err(error) => {
+                eprintln!("{}: {error}", stop.label);
+                prim::log_line(polled_at, 0, &error.to_string())
+            }
+        };
+        let path = dir.join(format!("{}.jsonl", stop.label));
+        let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
+        writeln!(file, "{line}")?;
+    }
+    Ok(())
 }
 
 fn read_token(path: &Path) -> Result<String, Box<dyn Error>> {

@@ -100,61 +100,43 @@ def phase1(states):
     return svg(parts)
 
 
-def wrap(text, size, max_width):
-    lines, current = [], ""
-    for word in text.split():
-        candidate = f"{current} {word}".strip()
-        if current and text_width(candidate, size) > max_width:
-            lines.append(current)
-            current = word
-        else:
-            current = candidate
-    return lines + [current]
+def tag(text, x, cy):
+    """Line number in white on a black tag; returns the parts and the tag width."""
+    size, pad_x, pad_y = 28, 12, 4
+    w, h = text_width(text, size) + 2 * pad_x, size + 2 * pad_y
+    return [
+        f'<rect x="{x}" y="{cy - h / 2}" width="{w}" height="{h}" rx="6" fill="{BLACK}"/>',
+        centered_text(text, size, x + w / 2, cy, WHITE),
+    ], w
 
 
-def phase2(buses, states):
-    tag_size, tag_pad_x, tag_pad_y, tag_gap = 36, 16, 6, 16
-    dir_size, dir_lh, dir_max = 26, 26 * 1.15, 260
-    time_size, block_gap, zone_gap, sep_w = 96, 12, 56, 4
-    slot, circle_gap = PHASE2_DIMS[0], 8
-
-    blocks = []
-    for line, direction, time in buses:
-        tag_w = text_width(line, tag_size) + 2 * tag_pad_x
-        lines = wrap(direction, dir_size, dir_max)
-        dir_w = min(text_width(direction, dir_size), dir_max)
-        row_w = tag_w + tag_gap + dir_w
-        row_h = max(tag_size + 2 * tag_pad_y, len(lines) * dir_lh)
-        blocks.append((line, lines, time, tag_w, row_w, row_h))
-
-    left_w = max(max(b[4] for b in blocks), max(text_width(t, time_size) for _, _, t in buses))
-    total = left_w + zone_gap + sep_w + zone_gap + slot
-    x_left = (W - total) / 2
-    x_sep = x_left + left_w + zone_gap
-    x_circles = x_sep + sep_w + zone_gap
-
+def direction(top, lines, label, times):
+    """Header row (tags then label, 40 px high), then the two departure times."""
+    x, row_h, cy = 24, 40, top + 20
     parts = []
-    half = H / len(blocks)
-    for i, (line, lines, time, tag_w, row_w, row_h) in enumerate(blocks):
-        content_h = row_h + block_gap + time_size
-        top = i * half + (half - content_h) / 2
-        row_cy = top + row_h / 2
-        tag_h = tag_size + 2 * tag_pad_y
-        parts.append(
-            f'<rect x="{x_left}" y="{row_cy - tag_h / 2}" width="{tag_w}" height="{tag_h}" rx="6" fill="{BLACK}"/>'
-        )
-        parts.append(centered_text(line, tag_size, x_left + tag_w / 2, row_cy, WHITE))
-        dir_x = x_left + tag_w + tag_gap
-        dir_top = row_cy - len(lines) * dir_lh / 2
-        for j, text in enumerate(lines):
-            parts.append(text_path(text, dir_size, dir_x, baseline_for(dir_top + j * dir_lh, dir_size, dir_lh), BLACK))
-        time_top = top + row_h + block_gap
-        time_x = x_left + left_w - text_width(time, time_size)
-        parts.append(text_path(time, time_size, time_x, baseline_for(time_top, time_size, time_size), BLACK))
+    for i, line in enumerate(lines):
+        tag_parts, w = tag(line, x, cy)
+        parts += tag_parts
+        x += w + (8 if i < len(lines) - 1 else 12)
+    label_size, label_lh = 22, 22 * 1.15
+    parts.append(text_path(label, label_size, x, baseline_for(cy - label_lh / 2, label_size, label_lh), BLACK))
+    time_size, cell_w, cell_gap = 96, 275, 32
+    time_top = top + row_h + 8
+    for i, time in enumerate(times):
+        right = 24 + i * (cell_w + cell_gap) + cell_w
+        x = right - text_width(time, time_size)
+        parts.append(text_path(time, time_size, x, baseline_for(time_top, time_size, time_size), BLACK))
+    return parts
 
-    parts.append(f'<rect x="{x_sep}" y="{H / 4}" width="{sep_w}" height="{H / 2}" fill="{BLACK}"/>')
 
-    col_top = (H - (4 * slot + 3 * circle_gap)) / 2
+def phase2(clock, directions, states):
+    parts = [text_path(clock, 64, 24, baseline_for(14, 64, 64), BLACK)]
+    parts.append(f'<rect x="24" y="92" width="610" height="4" fill="{BLACK}"/>')
+    parts.append(f'<rect x="630" y="48" width="4" height="384" fill="{BLACK}"/>')
+    for top, (lines, label, times) in zip((124, 300), directions):
+        parts += direction(top, lines, label, times)
+
+    slot, circle_gap, x_circles, col_top = PHASE2_DIMS[0], 8, 666, 8
     for i, p in enumerate(PEOPLE):
         home, activity = states.get(p, (False, False))
         cy = col_top + slot / 2 + i * (slot + circle_gap)
@@ -162,12 +144,15 @@ def phase2(buses, states):
     return svg(parts)
 
 
-BUSES = [("319", "Marché International de Rungis", "8:08"), ("297", "Antony RER", "8:17")]
+DIRECTIONS = [
+    (["319"], "Marché International de Rungis", ["8:08", "8:31"]),
+    (["297", "401"], "Antony RER", ["8:12", "8:21"]),
+]
 OUTPUTS = {
     "phase1-r-home.svg": phase1({"R": (True, False)}),
     "phase1-all-away.svg": phase1({}),
     "phase1-activity-ring.svg": phase1({"R": (True, False), "H": (True, True)}),
-    "phase2-buses-presence.svg": phase2(BUSES, {"R": (True, False), "H": (True, True)}),
+    "phase2-buses-presence.svg": phase2("8:04", DIRECTIONS, {"R": (True, False), "H": (True, True)}),
 }
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 for name, content in OUTPUTS.items():

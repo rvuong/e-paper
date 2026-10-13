@@ -11,6 +11,8 @@ pub mod freebox_client;
 pub mod layout;
 pub mod mockups;
 pub mod presence;
+pub mod prim;
+pub mod prim_client;
 pub mod rate;
 pub mod refresh;
 pub mod render;
