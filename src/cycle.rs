@@ -210,6 +210,7 @@ mod tests {
     fn mapping() -> Mapping {
         let assign = |person, smartphone| Assignment {
             person: Person(person),
+            name: String::new(),
             smartphone,
         };
         [
@@ -230,6 +231,7 @@ mod tests {
             vendor: String::new(),
             active: true,
             last_activity: Some(last_activity),
+            access_point: None,
         }
     }
 
@@ -340,6 +342,35 @@ mod tests {
         assert_eq!(state_of(&output, 'H'), HomeActive);
         // The unmapped TV counts for nobody: R stays passive.
         assert_eq!(state_of(&output, 'R'), HomePassive);
+    }
+
+    #[test]
+    fn repeater_device_gets_a_rate_in_the_cycle() {
+        // H's console is on the repeater: no Wi-Fi station counter, only the
+        // LAN browser's.
+        let mut console = host(H_CONSOLE, NOW - 60);
+        console.access_point = Some(crate::freebox::HostAccessPoint {
+            kind: Some("repeater".into()),
+            connectivity: Some("wifi".into()),
+            tx_bytes: Some(SIX_MBPS),
+            fields: Vec::new(),
+        });
+        let hosts = [host(H_PHONE, NOW - 60), console];
+        let counters = crate::freebox::download_counters(BTreeMap::new(), &hosts);
+        let before = previous(&[(H_CONSOLE, 0)]);
+        let output = cycle(&CycleInput {
+            now: NOW,
+            interval_secs: INTERVAL,
+            threshold_bps: THRESHOLD,
+            mapping: &mapping(),
+            hosts: &hosts,
+            counters: &counters,
+            previous: Some(&before),
+            previous_frame: true,
+            force: false,
+            partial_enabled: true,
+        });
+        assert_eq!(state_of(&output, 'H'), HomeActive);
     }
 
     #[test]

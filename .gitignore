@@ -7,6 +7,7 @@
 /devices.toml
 /state.json
 /frame.png
+/usage.csv
 /secrets/
 
 # IDE

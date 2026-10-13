@@ -143,6 +143,22 @@ pub struct Host {
     pub active: bool,
     /// Unix timestamp in seconds.
     pub last_activity: Option<i64>,
+    /// How the device is connected, when the Freebox says so.
+    pub access_point: Option<HostAccessPoint>,
+}
+
+/// The `access_point` object of a LAN host. Every field is optional: its
+/// exact content on a real Freebox is still being checked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostAccessPoint {
+    /// `type`: e.g. `gateway` or `repeater`.
+    pub kind: Option<String>,
+    /// `connectivity_type`: e.g. `wifi` or `ethernet`.
+    pub connectivity: Option<String>,
+    /// Bytes sent to the device, if the Freebox counts them here.
+    pub tx_bytes: Option<u64>,
+    /// Names of the fields present, sorted (diagnostics).
+    pub fields: Vec<String>,
 }
 
 /// Devices from a `GET lan/browser/{interface}/` answer, sorted by name.
@@ -156,6 +172,7 @@ pub fn parse_hosts(json: &str) -> Result<Vec<Host>, FreeboxError> {
         #[serde(default)]
         active: bool,
         last_activity: Option<i64>,
+        access_point: Option<serde_json::Value>,
     }
     #[derive(Deserialize)]
     struct L2Ident {
@@ -175,11 +192,27 @@ pub fn parse_hosts(json: &str) -> Result<Vec<Host>, FreeboxError> {
                 vendor: raw.vendor_name.unwrap_or_default(),
                 active: raw.active,
                 last_activity: raw.last_activity,
+                access_point: raw.access_point.as_ref().and_then(host_access_point),
             })
         })
         .collect();
     hosts.sort_by_key(|host| host.name.to_lowercase());
     Ok(hosts)
+}
+
+/// The `access_point` object of a host, None if absent or not an object.
+/// A field of an unexpected type is read as missing.
+fn host_access_point(value: &serde_json::Value) -> Option<HostAccessPoint> {
+    let object = value.as_object()?;
+    let text = |key: &str| object.get(key)?.as_str().map(String::from);
+    let mut fields: Vec<String> = object.keys().cloned().collect();
+    fields.sort();
+    Some(HostAccessPoint {
+        kind: text("type"),
+        connectivity: text("connectivity_type"),
+        tx_bytes: object.get("tx_bytes").and_then(serde_json::Value::as_u64),
+        fields,
+    })
 }
 
 /// Identifiers of the Wi-Fi access points, from `GET wifi/ap/`.
@@ -227,6 +260,25 @@ pub fn merge_stations(stations: impl IntoIterator<Item = Station>) -> BTreeMap<S
         *counter = (*counter).max(station.tx_bytes);
     }
     counters
+}
+
+/// Download counter of every host whose `access_point` counts its bytes
+/// (devices on a repeater are missing from `wifi/ap/{id}/stations/`).
+pub fn host_counters(hosts: &[Host]) -> BTreeMap<String, u64> {
+    hosts
+        .iter()
+        .filter_map(|host| Some((host.mac.clone(), host.access_point.as_ref()?.tx_bytes?)))
+        .collect()
+}
+
+/// Wi-Fi station counters and host counters together, keeping the highest
+/// counter of a device present in both.
+pub fn download_counters(mut wifi: BTreeMap<String, u64>, hosts: &[Host]) -> BTreeMap<String, u64> {
+    for (mac, counter) in host_counters(hosts) {
+        let merged = wifi.entry(mac).or_insert(0);
+        *merged = (*merged).max(counter);
+    }
+    wifi
 }
 
 #[cfg(test)]
@@ -332,7 +384,54 @@ mod tests {
                 vendor: "Google, Inc.".into(),
                 active: true,
                 last_activity: Some(1_760_000_000),
+                access_point: None,
             }
+        );
+    }
+
+    fn host_with_access_point(access_point: &str) -> String {
+        format!(
+            r#"{{"success": true, "result": [{{
+                "l2ident": {{"id": "02:00:00:00:00:09", "type": "mac_address"}},
+                "primary_name": "PS5",
+                "access_point": {access_point}
+            }}]}}"#
+        )
+    }
+
+    #[test]
+    fn host_access_point_is_parsed() {
+        let json = host_with_access_point(
+            r#"{"type": "repeater", "connectivity_type": "wifi", "uid": "x",
+                "tx_bytes": 123456, "rx_bytes": 42}"#,
+        );
+        let hosts = parse_hosts(&json).unwrap();
+        assert_eq!(
+            hosts[0].access_point,
+            Some(HostAccessPoint {
+                kind: Some("repeater".into()),
+                connectivity: Some("wifi".into()),
+                tx_bytes: Some(123_456),
+                fields: ["connectivity_type", "rx_bytes", "tx_bytes", "type", "uid"]
+                    .map(String::from)
+                    .to_vec(),
+            })
+        );
+    }
+
+    #[test]
+    fn missing_access_point_fields_are_tolerated() {
+        let hosts = parse_hosts(&host_with_access_point("null")).unwrap();
+        assert_eq!(hosts[0].access_point, None);
+        let hosts = parse_hosts(&host_with_access_point(r#"{"tx_bytes": "oops"}"#)).unwrap();
+        assert_eq!(
+            hosts[0].access_point,
+            Some(HostAccessPoint {
+                kind: None,
+                connectivity: None,
+                tx_bytes: None,
+                fields: vec!["tx_bytes".into()],
+            })
         );
     }
 
@@ -412,5 +511,64 @@ mod tests {
         assert_eq!(counters.len(), 2);
         assert_eq!(counters["02:00:00:00:00:02"], 700);
         assert_eq!(counters["02:00:00:00:00:03"], 900);
+    }
+
+    fn host_counting(mac: &str, tx_bytes: Option<u64>) -> Host {
+        Host {
+            mac: mac.into(),
+            name: String::new(),
+            vendor: String::new(),
+            active: true,
+            last_activity: None,
+            access_point: Some(HostAccessPoint {
+                kind: Some("repeater".into()),
+                connectivity: Some("wifi".into()),
+                tx_bytes,
+                fields: Vec::new(),
+            }),
+        }
+    }
+
+    #[test]
+    fn host_counters_come_from_access_point_tx_bytes() {
+        let mut no_access_point = host_counting("02:00:00:00:00:03", None);
+        no_access_point.access_point = None;
+        let counters = host_counters(&[
+            host_counting("02:00:00:00:00:01", Some(400)),
+            host_counting("02:00:00:00:00:02", None),
+            no_access_point,
+        ]);
+        assert_eq!(
+            counters,
+            [("02:00:00:00:00:01".to_string(), 400)]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn wifi_and_host_counters_are_merged_keeping_the_highest() {
+        let wifi: BTreeMap<String, u64> = [
+            ("02:00:00:00:00:01".to_string(), 500),
+            ("02:00:00:00:00:02".to_string(), 900),
+        ]
+        .into_iter()
+        .collect();
+        let hosts = [
+            host_counting("02:00:00:00:00:01", Some(520)),
+            host_counting("02:00:00:00:00:02", Some(800)),
+            host_counting("02:00:00:00:00:03", Some(300)),
+        ];
+        let counters = download_counters(wifi, &hosts);
+        assert_eq!(
+            counters,
+            [
+                ("02:00:00:00:00:01".to_string(), 520),
+                ("02:00:00:00:00:02".to_string(), 900),
+                ("02:00:00:00:00:03".to_string(), 300),
+            ]
+            .into_iter()
+            .collect()
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod cycle;
 pub mod devices;
+pub mod diagnose;
 pub mod display;
 pub mod epd;
 pub mod frame;
@@ -16,3 +17,4 @@ pub mod render;
 pub mod saved;
 pub mod state;
 pub mod update;
+pub mod usage;

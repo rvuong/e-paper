@@ -12,9 +12,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use clap::{Parser, Subcommand};
 use e_paper::cycle::{CycleInput, cycle};
 use e_paper::devices;
+use e_paper::diagnose;
 use e_paper::display::{Display, PngDisplay, Update};
 use e_paper::epd;
 use e_paper::frame::Frame;
+use e_paper::freebox;
 use e_paper::freebox_client::Client;
 use e_paper::layout::{PEOPLE, layout};
 use e_paper::mockups::phase1_states;
@@ -24,6 +26,7 @@ use e_paper::saved;
 use e_paper::state::PersonState::{Away, HomeActive, HomePassive};
 use e_paper::state::{ACTIVITY_THRESHOLD_BPS, PersonState};
 use e_paper::update::{UpdateKind, changed_window};
+use e_paper::usage;
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -55,6 +58,16 @@ enum Command {
         #[arg(long, default_value = "devices.toml")]
         devices: PathBuf,
     },
+    /// Shows where each assigned device's download counter comes from (Wi-Fi
+    /// access points, LAN browser). Never prints a MAC address.
+    CheckCounters {
+        /// The app token written by `authorize`.
+        #[arg(long, default_value = "secrets/freebox_app_token")]
+        token: PathBuf,
+        /// The mapping file.
+        #[arg(long, default_value = "devices.toml")]
+        devices: PathBuf,
+    },
     /// Runs one cycle: polls the Freebox, computes the state, redraws if needed.
     Run {
         /// The app token written by `authorize`.
@@ -78,6 +91,10 @@ enum Command {
         /// Never use partial refreshes.
         #[arg(long)]
         full_only: bool,
+        /// Appends each assigned device's download to this CSV file (dev
+        /// feature, to check the activity threshold).
+        #[arg(long)]
+        usage_log: Option<PathBuf>,
     },
     /// Shows the phase 1 mockup with an activity ring (legibility test).
     TestPattern {
@@ -140,6 +157,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
         Command::Authorize { token } => authorize(&token),
         Command::Devices { token, output } => list_devices(&token, &output),
         Command::CheckDevices { devices } => check_devices(&devices),
+        Command::CheckCounters { token, devices } => check_counters(&token, &devices),
         Command::Run {
             token,
             devices,
@@ -148,8 +166,16 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
             interval,
             force,
             full_only,
+            usage_log,
         } => run_cycle(
-            &token, &devices, &state, &output, interval, force, !full_only,
+            &token,
+            &devices,
+            &state,
+            &output,
+            interval,
+            force,
+            !full_only,
+            usage_log.as_deref(),
         ),
         Command::TestPattern { output } => test_pattern(&output),
         Command::PartialTest { output } => partial_test(&output),
@@ -200,6 +226,22 @@ fn check_devices(path: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn check_counters(token_path: &Path, devices_path: &Path) -> Result<(), Box<dyn Error>> {
+    let mapping = read_mapping(devices_path)?;
+    let app_token = read_token(token_path)?;
+    let mut client = Client::connect()?;
+    client.login(&app_token)?;
+    let hosts = client.lan_hosts()?;
+    let counters = client.wifi_counters()?;
+    for line in diagnose::counters_report(&mapping, &hosts, &counters) {
+        println!("{line}");
+    }
+    let fields = diagnose::access_point_fields(&hosts);
+    println!("access_point fields: {}", fields.join(", "));
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 fn run_cycle(
     token_path: &Path,
     devices_path: &Path,
@@ -208,6 +250,7 @@ fn run_cycle(
     interval_secs: i64,
     force: bool,
     partial_enabled: bool,
+    usage_log: Option<&Path>,
 ) -> Result<(), Box<dyn Error>> {
     let mapping = read_mapping(devices_path)?;
     let app_token = read_token(token_path)?;
@@ -225,10 +268,11 @@ fn run_cycle(
     let mut client = Client::connect()?;
     client.login(&app_token)?;
     let hosts = client.lan_hosts()?;
-    let counters = client.wifi_counters()?;
+    // Devices on the repeater only have the LAN browser's counter.
+    let counters = freebox::download_counters(client.wifi_counters()?, &hosts);
     let now = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())?;
 
-    let output = cycle(&CycleInput {
+    let input = CycleInput {
         now,
         interval_secs,
         threshold_bps: ACTIVITY_THRESHOLD_BPS,
@@ -239,7 +283,14 @@ fn run_cycle(
         previous_frame: previous_frame.is_some(),
         force,
         partial_enabled,
-    });
+    };
+    let output = cycle(&input);
+    // The display matters more than the log: a write failure is only a warning.
+    if let Some(path) = usage_log
+        && let Err(error) = append_usage(path, &usage::usage_lines(&input, &output.household))
+    {
+        eprintln!("warning: cannot write {}: {error}", path.display());
+    }
     let states: Vec<String> = PEOPLE
         .iter()
         .map(|person| format!("{} {}", person.0, describe(output.household[person])))
@@ -330,6 +381,22 @@ fn describe(state: PersonState) -> &'static str {
         PersonState::HomePassive => "home",
         PersonState::HomeActive => "home (active)",
     }
+}
+
+/// Appends lines to the usage log, with the header first if the file is new
+/// or empty.
+fn append_usage(path: &Path, lines: &[String]) -> io::Result<()> {
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+    let mut text = String::new();
+    if file.metadata()?.len() == 0 {
+        text.push_str(usage::HEADER);
+        text.push('\n');
+    }
+    for line in lines {
+        text.push_str(line);
+        text.push('\n');
+    }
+    file.write_all(text.as_bytes())
 }
 
 fn read_mapping(path: &Path) -> Result<devices::Mapping, Box<dyn Error>> {

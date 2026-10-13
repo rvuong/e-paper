@@ -67,9 +67,11 @@ pub fn write_new(path: &Path, content: &str) -> io::Result<()> {
 }
 
 /// The person a device belongs to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assignment {
     pub person: Person,
+    /// The device name, for logs (never the MAC address).
+    pub name: String,
     /// The phone used for presence.
     pub smartphone: bool,
 }
@@ -133,6 +135,7 @@ pub fn parse_mapping(text: &str) -> Result<Mapping, MappingError> {
             mac,
             Assignment {
                 person,
+                name: entry.name,
                 smartphone: entry.smartphone,
             },
         );
@@ -177,6 +180,7 @@ mod tests {
             vendor: vendor.into(),
             active: true,
             last_activity: None,
+            access_point: None,
         }
     }
 
@@ -239,6 +243,7 @@ mod tests {
             mapping["02:00:00:00:00:01"],
             Assignment {
                 person: Person('R'),
+                name: String::new(),
                 smartphone: true
             }
         );
@@ -246,9 +251,17 @@ mod tests {
             mapping["02:00:00:00:00:02"],
             Assignment {
                 person: Person('H'),
+                name: String::new(),
                 smartphone: false
             }
         );
+    }
+
+    #[test]
+    fn assignment_keeps_the_device_name() {
+        let text = "[[device]]\nmac = \"02:00:00:00:00:01\"\nname = \"PS5\"\nperson = \"H\"\n";
+        let mapping = parse_mapping(text).unwrap();
+        assert_eq!(mapping["02:00:00:00:00:01"].name, "PS5");
     }
 
     #[test]
