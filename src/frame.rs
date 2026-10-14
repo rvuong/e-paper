@@ -60,26 +60,29 @@ impl Frame {
 
     /// Decodes an 800×480 PNG; dark pixels (below mid-grey) are black.
     pub fn from_png(bytes: &[u8]) -> Result<Self, Box<dyn Error>> {
-        let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
-        // Expands every format to 8 bits per channel; the first channel is enough.
-        decoder.set_transformations(png::Transformations::EXPAND);
-        let mut reader = decoder.read_info()?;
-        let mut buffer = vec![0; reader.output_buffer_size().ok_or("PNG too large")?];
-        let info = reader.next_frame(&mut buffer)?;
-        if (info.width, info.height) != (WIDTH, HEIGHT) {
-            return Err(format!(
-                "expected {WIDTH}×{HEIGHT}, got {}×{}",
-                info.width, info.height
-            )
-            .into());
+        let (width, height, pixels) = decode_png(bytes)?;
+        if (width, height) != (WIDTH, HEIGHT) {
+            return Err(format!("expected {WIDTH}×{HEIGHT}, got {width}×{height}").into());
         }
-        let channels = info.line_size / WIDTH as usize;
-        let pixels = buffer[..info.buffer_size()]
-            .chunks(info.line_size)
-            .flat_map(|row| row.chunks(channels).map(|pixel| pixel[0] < 128))
-            .collect();
         Ok(Self { pixels })
     }
+}
+
+/// Decodes a PNG of any size: its width, its height and its pixels row by row,
+/// `true` for black (below mid-grey).
+pub fn decode_png(bytes: &[u8]) -> Result<(u32, u32, Vec<bool>), Box<dyn Error>> {
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+    // Expands every format to 8 bits per channel; the first channel is enough.
+    decoder.set_transformations(png::Transformations::EXPAND);
+    let mut reader = decoder.read_info()?;
+    let mut buffer = vec![0; reader.output_buffer_size().ok_or("PNG too large")?];
+    let info = reader.next_frame(&mut buffer)?;
+    let channels = info.line_size / info.width as usize;
+    let pixels = buffer[..info.buffer_size()]
+        .chunks(info.line_size)
+        .flat_map(|row| row.chunks(channels).map(|pixel| pixel[0] < 128))
+        .collect();
+    Ok((info.width, info.height, pixels))
 }
 
 impl OriginDimensions for Frame {

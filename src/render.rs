@@ -7,7 +7,8 @@ use embedded_graphics::primitives::{
 };
 use fontdue::{Font, FontSettings, Metrics};
 
-use crate::board::{BoardLayout, Element, Rect, Text};
+use crate::board::{BoardLayout, Element, Pictogram, Rect, Text};
+use crate::icons::ICON_SIZE;
 use crate::layout::{Circle, Ink, Slot};
 
 const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/AtkinsonHyperlegible-Bold.ttf");
@@ -58,6 +59,7 @@ where
         match element {
             Element::Rect(rect) => draw_rect(target, rect)?,
             Element::Text(text) => draw_text(target, text, font)?,
+            Element::Pictogram(pictogram) => draw_pictogram(target, pictogram)?,
         }
     }
     for slot in &board.slots {
@@ -126,6 +128,24 @@ where
     RoundedRectangle::with_equal_corners(area, Size::new(rect.radius, rect.radius))
         .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
         .draw(target)
+}
+
+/// Draws the black pixels of a pictogram.
+fn draw_pictogram<D>(target: &mut D, pictogram: &Pictogram) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = BinaryColor>,
+{
+    let size = ICON_SIZE as i32;
+    let pixels = pictogram.icon.pixels();
+    let black = (0..size * size)
+        .filter(|&index| pixels[index as usize])
+        .map(|index| {
+            Pixel(
+                Point::new(pictogram.x + index % size, pictogram.y + index / size),
+                BinaryColor::On,
+            )
+        });
+    target.draw_iter(black)
 }
 
 /// Draws a line of text glyph by glyph, each one advancing the pen by its
@@ -276,7 +296,7 @@ mod tests {
 
     mod board {
         use super::*;
-        use crate::board::{Board, Time, board_layout};
+        use crate::board::{Block, Board, Time, board_layout};
         use crate::state::Person;
 
         fn at(hour: u8, minute: u8) -> Time {
@@ -284,6 +304,10 @@ mod tests {
         }
 
         fn rendered_board(rungis: Vec<Time>, antony: Vec<Time>) -> Frame {
+            rendered_blocks(Block::Times(rungis), Block::Times(antony))
+        }
+
+        fn rendered_blocks(rungis: Block, antony: Block) -> Frame {
             let font = atkinson_bold();
             let board = Board {
                 clock: at(8, 4),
@@ -351,6 +375,15 @@ mod tests {
                 let ink = black_pixels(&frame, xs.clone(), ys).len();
                 assert!(ink > 200, "{ink} black pixels in cell {xs:?}");
             }
+        }
+
+        #[test]
+        fn pictogram_is_drawn() {
+            let frame = rendered_blocks(Block::Moon, Block::Times(vec![]));
+            // The moon's cell starts at (203, 172): its solid part is black,
+            // the corner of its square white.
+            assert!(frame.is_black(203 + 24, 172 + 48));
+            assert!(!frame.is_black(203 + 2, 172 + 2));
         }
 
         #[test]

@@ -6,7 +6,8 @@
 //! ```
 //!
 //! NAME is one of `phase1-r-home`, `phase1-all-away`, `phase1-activity-ring`,
-//! `phase2-buses-presence`.
+//! `phase2-buses-presence`, `phase2-end-of-service`,
+//! `phase2-bus-data-unavailable`.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -15,7 +16,7 @@ use std::{env, fs};
 use e_paper::board::board_layout;
 use e_paper::frame::Frame;
 use e_paper::layout::{HEIGHT, WIDTH, layout};
-use e_paper::mockups::{phase1_states, phase2_state};
+use e_paper::mockups::{phase1_states, phase2_states};
 use e_paper::render::{atkinson_bold, render, render_board};
 use embedded_graphics::pixelcolor::{BinaryColor, Rgb888};
 use embedded_graphics::prelude::*;
@@ -50,20 +51,23 @@ fn write_pngs(dir: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         fs::write(&path, frame.to_png())?;
         println!("{}", path.display());
     }
-    let (name, board, household) = phase2_state();
-    let mut frame = Frame::new();
-    render_board(&mut frame, &board_layout(&board, &household, &font), &font)?;
-    let path = dir.join(format!("{name}.png"));
-    fs::write(&path, frame.to_png())?;
-    println!("{}", path.display());
+    for (name, board, household) in phase2_states() {
+        let mut frame = Frame::new();
+        render_board(&mut frame, &board_layout(&board, &household, &font), &font)?;
+        let path = dir.join(format!("{name}.png"));
+        fs::write(&path, frame.to_png())?;
+        println!("{}", path.display());
+    }
     Ok(())
 }
 
 fn show(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let font = atkinson_bold();
     let mut display = SimulatorDisplay::<BinaryColor>::new(Size::new(WIDTH, HEIGHT));
-    let (phase2_name, board, household) = phase2_state();
-    if name == phase2_name {
+    if let Some((_, board, household)) = phase2_states()
+        .into_iter()
+        .find(|(candidate, _, _)| *candidate == name)
+    {
         render_board(
             &mut display,
             &board_layout(&board, &household, &font),

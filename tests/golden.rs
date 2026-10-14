@@ -14,7 +14,7 @@ use std::path::Path;
 use e_paper::board::board_layout;
 use e_paper::frame::Frame;
 use e_paper::layout::layout;
-use e_paper::mockups::{phase1_states, phase2_state};
+use e_paper::mockups::{phase1_states, phase2_states};
 use e_paper::render::{atkinson_bold, render, render_board};
 
 #[test]
@@ -36,18 +36,19 @@ fn renders_match_the_golden_images() {
 }
 
 #[test]
-fn phase_2_render_matches_the_golden_image() {
+fn phase_2_renders_match_the_golden_images() {
     let font = atkinson_bold();
-    let (name, board, household) = phase2_state();
-    let path = Path::new("tests/golden").join(format!("{name}.png"));
-    let golden = Frame::from_png(&fs::read(&path).unwrap()).unwrap();
+    for (name, board, household) in phase2_states() {
+        let path = Path::new("tests/golden").join(format!("{name}.png"));
+        let golden = Frame::from_png(&fs::read(&path).unwrap()).unwrap();
 
-    let mut frame = Frame::new();
-    render_board(&mut frame, &board_layout(&board, &household, &font), &font).unwrap();
+        let mut frame = Frame::new();
+        render_board(&mut frame, &board_layout(&board, &household, &font), &font).unwrap();
 
-    assert!(
-        frame == golden,
-        "{name}: the render differs from {}",
-        path.display()
-    );
+        assert!(
+            frame == golden,
+            "{name}: the render differs from {}",
+            path.display()
+        );
+    }
 }

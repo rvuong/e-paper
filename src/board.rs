@@ -10,6 +10,7 @@ use std::fmt;
 use embedded_graphics::prelude::Point;
 use fontdue::Font;
 
+use crate::icons::{ICON_SIZE, Icon};
 use crate::layout::{Ink, PEOPLE, Slot, SlotSizes, slot};
 use crate::refresh::HouseholdState;
 use crate::state::PersonState;
@@ -77,13 +78,24 @@ impl fmt::Display for Time {
     }
 }
 
-/// What the bus part shows: the clock and the next departures of each
-/// direction, already chosen and sorted (only the first two are shown).
+/// What a direction block shows below its header.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Block {
+    /// The next departures, already chosen and sorted; only the first two
+    /// are shown, a missing one as a dash.
+    Times(Vec<Time>),
+    /// The service is over, or not started yet.
+    Moon,
+    /// The bus data is unavailable.
+    Wrench,
+}
+
+/// What the bus part shows: the clock and each direction's block.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
     pub clock: Time,
-    pub rungis: Vec<Time>,
-    pub antony: Vec<Time>,
+    pub rungis: Block,
+    pub antony: Block,
 }
 
 /// A black rectangle, with rounded corners when `radius` is not 0.
@@ -116,11 +128,20 @@ impl Text {
     }
 }
 
+/// A pictogram, `ICON_SIZE` px square, from its top left corner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Pictogram {
+    pub icon: Icon,
+    pub x: i32,
+    pub y: i32,
+}
+
 /// Something to draw, in drawing order.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Element {
     Rect(Rect),
     Text(Text),
+    Pictogram(Pictogram),
 }
 
 /// The whole phase 2 screen.
@@ -222,7 +243,7 @@ fn direction(
     top: i32,
     lines: &[&str],
     label: &str,
-    departures: &[Time],
+    block: &Block,
 ) {
     let row_center = top + HEADER_HEIGHT / 2;
     let mut x = MARGIN;
@@ -265,19 +286,35 @@ fn direction(
         Ink::Black,
     )));
 
+    let time_top = top + TIMES_OFFSET;
+    let icon = match block {
+        Block::Times(departures) => return times(elements, font, departures, time_top),
+        Block::Moon => Icon::Moon,
+        Block::Wrench => Icon::Wrench,
+    };
+    // Right-aligned in the first cell, like a time; the second cell stays
+    // empty.
+    elements.push(Element::Pictogram(Pictogram {
+        icon,
+        x: MARGIN + CELL_WIDTH - ICON_SIZE as i32,
+        y: time_top,
+    }));
+}
+
+/// The two departure cells, a dash for a missing departure.
+fn times(elements: &mut Vec<Element>, font: &Font, departures: &[Time], time_top: i32) {
     for cell in 0..2 {
         let right = MARGIN + cell * (CELL_WIDTH + CELL_GAP) + CELL_WIDTH;
         let content = departures
             .get(cell as usize)
             .map_or(NO_DEPARTURE.to_string(), Time::to_string);
         let width = text_width(font, &content, TIME_SIZE);
-        let time_top = (top + TIMES_OFFSET) as f32;
         elements.push(Element::Text(text(
             font,
             &content,
             TIME_SIZE,
             right as f32 - width,
-            time_top,
+            time_top as f32,
             TIME_SIZE as f32,
             Ink::Black,
         )));
@@ -298,6 +335,10 @@ mod tests {
 
     /// The mockup's board: R home, H home with the activity mark.
     fn mockup_layout(rungis: Vec<Time>, antony: Vec<Time>) -> BoardLayout {
+        blocks_layout(Block::Times(rungis), Block::Times(antony))
+    }
+
+    fn blocks_layout(rungis: Block, antony: Block) -> BoardLayout {
         let board = Board {
             clock: at(8, 4),
             rungis,
@@ -315,7 +356,7 @@ mod tests {
             .iter()
             .filter_map(|element| match element {
                 Element::Text(text) => Some(text),
-                Element::Rect(_) => None,
+                _ => None,
             })
             .collect()
     }
@@ -326,7 +367,7 @@ mod tests {
             .iter()
             .filter_map(|element| match element {
                 Element::Rect(rect) => Some(*rect),
-                Element::Text(_) => None,
+                _ => None,
             })
             .collect()
     }
@@ -359,6 +400,17 @@ mod tests {
                     && text.top + text.line_height < (rect.y + rect.height as i32) as f32
             })
             .unwrap()
+    }
+
+    fn pictograms(layout: &BoardLayout) -> Vec<Pictogram> {
+        layout
+            .elements
+            .iter()
+            .filter_map(|element| match element {
+                Element::Pictogram(pictogram) => Some(*pictogram),
+                _ => None,
+            })
+            .collect()
     }
 
     fn close(actual: f32, expected: f32) -> bool {
@@ -524,6 +576,42 @@ mod tests {
             .collect();
         assert_eq!(antony, [NO_DEPARTURE, NO_DEPARTURE]);
         assert!(close(times_at(&layout, 172.0)[1].right(), 606.0));
+    }
+
+    #[test]
+    fn moon_is_right_aligned_in_the_first_cell() {
+        let layout = blocks_layout(Block::Moon, Block::Times(vec![at(21, 22)]));
+        assert_eq!(
+            pictograms(&layout),
+            [Pictogram {
+                icon: Icon::Moon,
+                x: 203,
+                y: 172
+            }]
+        );
+        assert!(times_at(&layout, 172.0).is_empty());
+        assert_eq!(times_at(&layout, 348.0).len(), 2);
+    }
+
+    #[test]
+    fn wrench_is_in_both_blocks() {
+        let layout = blocks_layout(Block::Wrench, Block::Wrench);
+        assert_eq!(
+            pictograms(&layout),
+            [
+                Pictogram {
+                    icon: Icon::Wrench,
+                    x: 203,
+                    y: 172
+                },
+                Pictogram {
+                    icon: Icon::Wrench,
+                    x: 203,
+                    y: 348
+                },
+            ]
+        );
+        assert!(times_at(&layout, 172.0).is_empty() && times_at(&layout, 348.0).is_empty());
     }
 
     // C. Everything fits, measured with the real font

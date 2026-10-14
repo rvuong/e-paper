@@ -10,6 +10,7 @@ pub mod epd;
 pub mod frame;
 pub mod freebox;
 pub mod freebox_client;
+pub mod icons;
 pub mod layout;
 pub mod mockups;
 pub mod presence;

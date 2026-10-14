@@ -1,11 +1,20 @@
 //! Phase 2 departures: from a PRIM `stop-monitoring` answer to the next
 //! catchable departures of a direction, without any network access.
 //!
-//! Times stay UTC instants here; the cycle turns them into Paris times.
+//! Times are UTC instants until `block` turns them into Paris times.
 //! See CLAUDE.md, "Phase 2".
 
+use jiff::tz::TimeZone;
 use jiff::{SignedDuration, Timestamp};
 use serde::Deserialize;
+
+use crate::board::{Block, Time};
+
+/// A departure less than this away is hidden: time to reach the stop.
+pub const MIN_LEAD: SignedDuration = SignedDuration::from_mins(5);
+
+/// After this many failed polls in a row, the block shows the wrench.
+pub const FAILURES_BEFORE_WRENCH: u32 = 2;
 
 /// A block of the board. Each home pole serves one direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -185,6 +194,29 @@ pub fn next(answer: &Answer, now: Timestamp, min_lead: SignedDuration) -> Next {
         Next::ServiceOver
     } else {
         Next::Times(times)
+    }
+}
+
+/// The time of day in Paris, daylight saving included, truncated to the
+/// minute: a bus is never shown later than it leaves.
+pub fn paris_time(at: Timestamp) -> Time {
+    let paris = TimeZone::get("Europe/Paris").expect("time zone database bundled with jiff");
+    let local = at.to_zoned(paris);
+    Time {
+        hour: local.hour() as u8,
+        minute: local.minute() as u8,
+    }
+}
+
+/// What a direction block shows, from the last answer of its pole and the
+/// number of failed polls since.
+pub fn block(answer: &Answer, failures: u32, now: Timestamp) -> Block {
+    if failures >= FAILURES_BEFORE_WRENCH {
+        return Block::Wrench;
+    }
+    match next(answer, now, MIN_LEAD) {
+        Next::ServiceOver => Block::Moon,
+        Next::Times(times) => Block::Times(times.into_iter().map(paris_time).collect()),
     }
 }
 
@@ -386,5 +418,54 @@ mod tests {
             answer.statuses,
             [(LINE_297.to_string(), ServiceStatus::BeforeFirstJourney)]
         );
+    }
+
+    // C. Paris time
+
+    fn hm(hour: u8, minute: u8) -> Time {
+        Time { hour, minute }
+    }
+
+    #[test]
+    fn paris_time_is_truncated_to_the_minute() {
+        assert_eq!(paris_time(at("2026-10-14T06:08:36Z")), hm(8, 8));
+    }
+
+    #[test]
+    fn paris_time_follows_daylight_saving() {
+        // Summer time ends on 2026-10-25 at 01:00 UTC (03:00 becomes 02:00).
+        assert_eq!(paris_time(at("2026-10-25T00:30:00Z")), hm(2, 30));
+        assert_eq!(paris_time(at("2026-10-25T01:30:00Z")), hm(2, 30));
+        assert_eq!(paris_time(at("2026-12-01T12:00:00Z")), hm(13, 0));
+    }
+
+    // D. Block of a direction
+
+    #[test]
+    fn next_departures_become_paris_times() {
+        let answer = departures(&[
+            (LINE_297, "2026-10-14T06:20:43Z"),
+            (LINE_401, "2026-10-14T06:13:00Z"),
+        ]);
+        assert_eq!(
+            block(&answer, 0, at("2026-10-14T06:00:00Z")),
+            Block::Times(vec![hm(8, 13), hm(8, 20)])
+        );
+    }
+
+    #[test]
+    fn service_over_gives_the_moon() {
+        let answer = parse(RUNGIS_EVENING, Direction::Rungis).unwrap();
+        assert_eq!(block(&answer, 0, at("2026-10-13T18:40:00Z")), Block::Moon);
+    }
+
+    #[test]
+    fn two_failed_polls_give_the_wrench() {
+        let answer = departures(&[(LINE_319, "2026-10-14T06:13:00Z")]);
+        let now = at("2026-10-14T06:00:00Z");
+        let times = Block::Times(vec![hm(8, 13)]);
+        assert_eq!(block(&answer, 0, now), times);
+        assert_eq!(block(&answer, 1, now), times);
+        assert_eq!(block(&answer, 2, now), Block::Wrench);
     }
 }
