@@ -110,8 +110,25 @@ def tag(text, x, cy):
     ], w
 
 
+# Pictograms shown instead of the times (Tabler Icons, MIT licence), 24 px grid.
+MOON = (
+    '<path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.497 12.75a9 9 0 1 1 -7.89 -12.75z" '
+    'fill="#000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>'
+)
+WRENCH = (
+    '<path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5" '
+    'fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+)
+
+
+def pictogram(icon, right, top, size=96):
+    """Pictogram right-aligned in a cell, like a time."""
+    return f'<g transform="translate({right - size} {top}) scale({size / 24})">{icon}</g>'
+
+
 def direction(top, lines, label, times):
-    """Header row (tags then label, 40 px high), then the two departure times."""
+    """Header row (tags then label, 40 px high), then the two departure times,
+    or a pictogram (MOON or WRENCH) in the first cell."""
     x, row_h, cy = 24, 40, top + 20
     parts = []
     for i, line in enumerate(lines):
@@ -122,6 +139,8 @@ def direction(top, lines, label, times):
     parts.append(text_path(label, label_size, x, baseline_for(cy - label_lh / 2, label_size, label_lh), BLACK))
     time_size, cell_w, cell_gap = 96, 275, 32
     time_top = top + row_h + 8
+    if times in (MOON, WRENCH):
+        return parts + [pictogram(times, 24 + cell_w, time_top)]
     for i, time in enumerate(times):
         right = 24 + i * (cell_w + cell_gap) + cell_w
         x = right - text_width(time, time_size)
@@ -153,6 +172,16 @@ OUTPUTS = {
     "phase1-all-away.svg": phase1({}),
     "phase1-activity-ring.svg": phase1({"R": (True, False), "H": (True, True)}),
     "phase2-buses-presence.svg": phase2("8:04", DIRECTIONS, {"R": (True, False), "H": (True, True)}),
+    "phase2-end-of-service.svg": phase2(
+        "21:15",
+        [(["319"], "Marché International de Rungis", MOON), (["297", "401"], "Antony RER", ["21:22", "21:40"])],
+        {"R": (True, False), "H": (True, True)},
+    ),
+    "phase2-bus-data-unavailable.svg": phase2(
+        "8:04",
+        [(["319"], "Marché International de Rungis", WRENCH), (["297", "401"], "Antony RER", WRENCH)],
+        {"R": (True, False), "H": (True, True)},
+    ),
 }
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 for name, content in OUTPUTS.items():
