@@ -1,0 +1,1080 @@
+{
+  "Siri": {
+    "ServiceDelivery": {
+      "ProducerRef": "IVTR_HET",
+      "ResponseMessageIdentifier": "IVTR_HET:ResponseMessage:a693649b-884c-4ade-9e20-ea21e53afd71:LOC:",
+      "ResponseTimestamp": "2026-10-13T13:30:00.288Z",
+      "StopMonitoringDelivery": [
+        {
+          "MonitoredStopVisit": [
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261013.46.PALS.IDFM.C01270.R.EXP.50226338.146:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:20422:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Antony RER"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Antony RER"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Retour"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261013.46.R.C01270:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01270:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Antony RER"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-13T13:30:47.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:29:38.734Z"
+            },
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261013.34.PALS.IDFM.C01282.R.EXP.50226338.85:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare de Massy - Palaiseau"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:493319:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Massy-Palaiseau"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Massy-Palaiseau RER"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Retour"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261013.34.R.C01282:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01282:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Massy-Palaiseau"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-13T13:39:05.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:24:21.445Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::ce28a7cdf77ddcf670c0f562155472fd0342b25b:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264385:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T13:43:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T13:43:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T13:43:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T13:43:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T10:43:00.968Z"
+            },
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261013.47.PALS.IDFM.C01270.R.EXP.50226338.146:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:20422:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Antony RER"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Antony RER"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Retour"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261013.47.R.C01270:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01270:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Antony RER"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-13T13:46:13.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:18:08.294Z"
+            },
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261013.35.PALS.IDFM.C01282.R.EXP.50226338.85:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare de Massy - Palaiseau"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:493319:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Massy-Palaiseau"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Massy-Palaiseau RER"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Retour"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261013.35.R.C01282:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01282:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Massy-Palaiseau"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-13T13:52:58.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:23:20.836Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::85dcf9d2a89a85e366fa110854af0f88fec3d544:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264386:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T14:16:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T14:16:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T14:16:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T14:16:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T11:16:04.352Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::c7164a27daa31ccc68a45bdb85bfa565d69aaa28:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264387:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T14:36:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T14:36:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T14:36:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T14:36:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T11:36:05.060Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::342db243a75840121fbdfe32dfc53f4b7fd829a9:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264388:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T14:57:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T14:57:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T14:57:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T14:57:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T11:57:00.525Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::c4772a22e8531d6001c7fc5aa42674a481fa9ab7:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264389:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T15:17:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T15:17:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T15:17:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T15:17:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T12:17:03.036Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::259dcb1ae276801cb6fa23a7b5ed641359eda434:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264390:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T15:27:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T15:27:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T15:27:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T15:27:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T12:27:01.430Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::1f28755563d3ae4abdfbb5bc0aaf4eb8c2556349:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264391:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T15:36:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T15:36:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T15:36:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T15:36:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T12:36:01.123Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::04a12c31776f4bd6eafe65fb4d95d9559a8a3707:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264392:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T15:46:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T15:46:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T15:46:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T15:46:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T12:46:01.506Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::882cc7dac98cc1ea25771c7df096320d888f7432:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264393:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T15:56:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T15:56:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T15:56:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T15:56:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T12:56:00.123Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::b8925f3b5eb1ba3109153ba4c3d974739c88169f:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264394:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T16:06:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T16:06:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T16:06:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T16:06:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:06:58.958Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::9dba907eba6811f3ccfbe59315da639d1d854167:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264395:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T16:16:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T16:16:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T16:16:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T16:16:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:16:00.265Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::10d0794aec52f898af74ee66336b26d6a1af22e5:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Villemilan"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:29049:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Aller"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "outbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-13:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264396:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P40"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-13T16:26:00.000Z",
+                  "AimedDepartureTime": "2026-10-13T16:26:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Villemilan"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-13T16:26:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-13T16:26:00.000Z",
+                  "Order": 10,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-13T13:26:03.802Z"
+            }
+          ],
+          "ResponseTimestamp": "2026-10-13T13:30:00.753Z",
+          "ServiceException": [],
+          "Status": "true",
+          "StopLineNotice": [],
+          "Version": "2.0"
+        }
+      ]
+    }
+  }
+}

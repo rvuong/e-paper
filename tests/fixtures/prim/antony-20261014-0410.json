@@ -1,0 +1,463 @@
+{
+  "Siri": {
+    "ServiceDelivery": {
+      "ProducerRef": "IVTR_HET",
+      "ResponseMessageIdentifier": "IVTR_HET:ResponseMessage:7709b235-5db2-4fb1-b94b-228f67eba560:LOC:",
+      "ResponseTimestamp": "2026-10-14T02:10:00.705Z",
+      "StopMonitoringDelivery": [
+        {
+          "MonitoredStopVisit": [
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::89abd94131528d99f57b39da56fca8cd3876afde:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264354:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T03:38:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T03:38:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T03:38:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T03:38:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:01:02.455Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::b9eb218ac12fa9fdbc533569289de7f585e132f8:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264355:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T03:58:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T03:58:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T03:58:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T03:58:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:01:02.455Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::40a8a5bef4eaff5c4235e922f2476fc1c0293ff8:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264356:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T04:18:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T04:18:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T04:18:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T04:18:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:18:03.709Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::0eea2d928ad37313ed4ee9c822705aa3d59088cd:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264357:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T04:37:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T04:37:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T04:37:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T04:37:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:37:01.322Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::3dc91e911cf2a210300a1885f78261cf332839d0:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264358:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T04:47:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T04:47:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T04:47:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T04:47:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:47:02.487Z"
+            },
+            {
+              "ItemIdentifier": "RATPCapIDF:Item::bca21292c0ca61dd15bad791284284f58a23e05a:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Gare d'Antony"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:12070:"
+                },
+                "DirectionName": [
+                  {
+                    "value": "Retour"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "inbound"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "RATPCapIDF:DataFrame::2026-10-14:LOC"
+                  },
+                  "DatedVehicleJourneyRef": "537RDBIEVRE:VehicleJourney::12264359:LOC"
+                },
+                "JourneyNote": [
+                  {
+                    "value": "L401P42"
+                  }
+                ],
+                "LineRef": {
+                  "value": "STIF:Line::C00339:"
+                },
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-10-14T04:55:00.000Z",
+                  "AimedDepartureTime": "2026-10-14T04:55:00.000Z",
+                  "ArrivalStatus": "onTime",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Gare d'Antony via Les Rabats"
+                    }
+                  ],
+                  "ExpectedArrivalTime": "2026-10-14T04:55:00.000Z",
+                  "ExpectedDepartureTime": "2026-10-14T04:55:00.000Z",
+                  "Order": 8,
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "537RDBIEVRE:Operator::537RDBIEVRE:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              },
+              "RecordedAtTime": "2026-10-14T01:55:04.266Z"
+            }
+          ],
+          "ResponseTimestamp": "2026-10-14T02:10:00.708Z",
+          "ServiceException": [
+            {
+              "DirectionRef": {
+                "value": "Retour"
+              },
+              "LineRef": {
+                "value": "STIF:Line::C01270:"
+              },
+              "Notice": [
+                {
+                  "value": "SERVICE\nNON COMMENCE"
+                }
+              ],
+              "RecordedAtTime": "2026-10-14T04:09:38.204Z",
+              "ServiceStatus": {
+                "value": "beforeFirstJourney"
+              },
+              "StopPointRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              }
+            },
+            {
+              "DirectionRef": {
+                "value": "Retour"
+              },
+              "LineRef": {
+                "value": "STIF:Line::C01282:"
+              },
+              "Notice": [
+                {
+                  "value": "SERVICE TERMINE\n.................."
+                }
+              ],
+              "RecordedAtTime": "2026-10-14T00:59:55.897Z",
+              "ServiceStatus": {
+                "value": "afterLastJourney"
+              },
+              "StopPointRef": {
+                "value": "STIF:StopPoint:Q:00001:"
+              }
+            }
+          ],
+          "Status": "true",
+          "StopLineNotice": [],
+          "Version": "2.0"
+        }
+      ]
+    }
+  }
+}

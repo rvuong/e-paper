@@ -2,6 +2,7 @@
 
 pub mod board;
 pub mod cycle;
+pub mod departures;
 pub mod devices;
 pub mod diagnose;
 pub mod display;

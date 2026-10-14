@@ -1,0 +1,40 @@
+{
+  "Siri": {
+    "ServiceDelivery": {
+      "ProducerRef": "IVTR_HET",
+      "ResponseMessageIdentifier": "IVTR_HET:ResponseMessage:d8066fd6-e3c7-4da2-b68b-78521f124712:LOC:",
+      "ResponseTimestamp": "2026-10-13T18:40:00.864Z",
+      "StopMonitoringDelivery": [
+        {
+          "MonitoredStopVisit": [],
+          "ResponseTimestamp": "2026-10-13T18:40:00.865Z",
+          "ServiceException": [
+            {
+              "DirectionRef": {
+                "value": "Aller"
+              },
+              "LineRef": {
+                "value": "STIF:Line::C01282:"
+              },
+              "Notice": [
+                {
+                  "value": "SERVICE TERMINE\n.................."
+                }
+              ],
+              "RecordedAtTime": "2026-10-13T20:39:25.715Z",
+              "ServiceStatus": {
+                "value": "afterLastJourney"
+              },
+              "StopPointRef": {
+                "value": "STIF:StopPoint:Q:00002:"
+              }
+            }
+          ],
+          "Status": "true",
+          "StopLineNotice": [],
+          "Version": "2.0"
+        }
+      ]
+    }
+  }
+}

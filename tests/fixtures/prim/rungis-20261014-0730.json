@@ -1,0 +1,148 @@
+{
+  "Siri": {
+    "ServiceDelivery": {
+      "ProducerRef": "IVTR_HET",
+      "ResponseMessageIdentifier": "IVTR_HET:ResponseMessage:151c5205-7069-4ca7-9b63-054a6f902b59:LOC:",
+      "ResponseTimestamp": "2026-10-14T05:30:00.821Z",
+      "StopMonitoringDelivery": [
+        {
+          "MonitoredStopVisit": [
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261014.5.PALS.IDFM.C01282.A.EXP.50226326.36:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Marché International de Rungis"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:415870:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Min de Rungis"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Rungis-Marché International"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Aller"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261014.5.A.C01282:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01282:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Min de Rungis"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-14T05:29:44.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": true
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00002:"
+              },
+              "RecordedAtTime": "2026-10-14T05:29:13.418Z"
+            },
+            {
+              "ItemIdentifier": "MeC_Bus_PC:Item::20261014.6.PALS.IDFM.C01282.A.EXP.50226326.36:LOC",
+              "MonitoredVehicleJourney": {
+                "DestinationName": [
+                  {
+                    "value": "Marché International de Rungis"
+                  }
+                ],
+                "DestinationRef": {
+                  "value": "STIF:StopPoint:Q:415870:"
+                },
+                "DestinationShortName": [
+                  {
+                    "value": "Min de Rungis"
+                  }
+                ],
+                "DirectionName": [
+                  {
+                    "value": "Rungis-Marché International"
+                  }
+                ],
+                "DirectionRef": {
+                  "value": "Aller"
+                },
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": {
+                    "value": "any"
+                  },
+                  "DatedVehicleJourneyRef": "MeC_Bus_PC:VehicleJourney::20261014.6.A.C01282:LOC"
+                },
+                "JourneyNote": [],
+                "LineRef": {
+                  "value": "STIF:Line::C01282:"
+                },
+                "MonitoredCall": {
+                  "ArrivalStatus": "",
+                  "DepartureStatus": "onTime",
+                  "DestinationDisplay": [
+                    {
+                      "value": "Min de Rungis"
+                    }
+                  ],
+                  "ExpectedDepartureTime": "2026-10-14T05:36:22.000Z",
+                  "StopPointName": [
+                    {
+                      "value": "Montjean"
+                    }
+                  ],
+                  "VehicleAtStop": false
+                },
+                "OperatorRef": {
+                  "value": "MeC_Bus_PC:Operator::1052:"
+                },
+                "TrainNumbers": {
+                  "TrainNumberRef": []
+                },
+                "VehicleFeatureRef": [],
+                "VehicleJourneyName": []
+              },
+              "MonitoringRef": {
+                "value": "STIF:StopPoint:Q:00002:"
+              },
+              "RecordedAtTime": "2026-10-14T05:18:43.274Z"
+            }
+          ],
+          "ResponseTimestamp": "2026-10-14T05:30:00.824Z",
+          "ServiceException": [],
+          "Status": "true",
+          "StopLineNotice": [],
+          "Version": "2.0"
+        }
+      ]
+    }
+  }
+}
