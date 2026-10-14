@@ -7,6 +7,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::bus::BusState;
 use crate::refresh::HouseholdState;
 
 /// What a run leaves for the next one.
@@ -18,17 +19,18 @@ pub struct SavedState {
     pub household: HouseholdState,
     /// Download counter (`tx_bytes`) of each assigned device seen, by MAC.
     pub counters: BTreeMap<String, u64>,
-    /// Last time the display was redrawn, Unix timestamp in seconds. Absent
+    /// Last full refresh of the display, Unix timestamp in seconds. Absent
     /// from state files written before it existed.
     #[serde(default)]
     pub last_full_refresh: Option<i64>,
-    /// Partial refreshes since the last full one.
-    #[serde(default)]
-    pub partials_since_full: u32,
     /// Earlier readings of the counters, still within the rate window, oldest
     /// first (rates are averaged over that window).
     #[serde(default)]
     pub earlier: Vec<Snapshot>,
+    /// Last PRIM answers and failed polls (phase 2). Absent from state files
+    /// written before it existed.
+    #[serde(default)]
+    pub bus: Option<BusState>,
 }
 
 /// The download counters of the assigned devices at one poll.
@@ -74,6 +76,8 @@ pub fn save(path: &Path, state: &SavedState) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bus::Pole;
+    use crate::departures::{Answer, Departure, LINE_297, LINE_319, ServiceStatus};
     use crate::state::Person;
     use crate::state::PersonState::{Away, HomeActive};
 
@@ -87,13 +91,13 @@ mod tests {
                 .into_iter()
                 .collect(),
             last_full_refresh: Some(1_759_990_000),
-            partials_since_full: 3,
             earlier: vec![Snapshot {
                 polled_at: 1_759_999_400,
                 counters: [("02:00:00:00:00:02".to_string(), 1_100_000_000)]
                     .into_iter()
                     .collect(),
             }],
+            bus: None,
         }
     }
 
@@ -133,5 +137,52 @@ mod tests {
         let (state, warning) = load(&path);
         assert_eq!(warning, None);
         assert_eq!(state.unwrap().last_full_refresh, None);
+    }
+
+    #[test]
+    fn saved_state_with_bus_answers_reads_back_identical() {
+        let at = |time: &str| time.parse().unwrap();
+        let state = SavedState {
+            bus: Some(BusState {
+                polled_at: at("2026-10-14T06:00:00Z"),
+                rungis: Pole {
+                    answer: Answer {
+                        departures: vec![Departure {
+                            line: LINE_319.into(),
+                            at: at("2026-10-14T06:08:36Z"),
+                        }],
+                        statuses: vec![],
+                    },
+                    failures: 1,
+                },
+                antony: Pole {
+                    answer: Answer {
+                        departures: vec![],
+                        statuses: vec![(LINE_297.into(), ServiceStatus::AfterLastJourney)],
+                    },
+                    failures: 0,
+                },
+            }),
+            ..example()
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        save(&path, &state).unwrap();
+        assert_eq!(load(&path), (Some(state), None));
+    }
+
+    #[test]
+    fn phase_1_state_file_reads_back_without_bus_answers() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        fs::write(
+            &path,
+            r#"{"polled_at": 1760000000, "household": {"R": "Away"}, "counters": {},
+                "last_full_refresh": 1759990000, "partials_since_full": 3, "earlier": []}"#,
+        )
+        .unwrap();
+        let (state, warning) = load(&path);
+        assert_eq!(warning, None);
+        assert_eq!(state.unwrap().bus, None);
     }
 }

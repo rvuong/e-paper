@@ -100,8 +100,8 @@ mod tests {
             household: PEOPLE.into_iter().map(|person| (person, Away)).collect(),
             counters: counters(values),
             last_full_refresh: Some(NOW - 60),
-            partials_since_full: 0,
             earlier: Vec::new(),
+            bus: None,
         }
     }
 
@@ -136,9 +136,6 @@ mod tests {
                 hosts: &[],
                 counters: &counters,
                 previous,
-                previous_frame: true,
-                force: false,
-                partial_enabled: true,
             },
             household,
         )

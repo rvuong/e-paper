@@ -1,5 +1,7 @@
-//! One cycle: from the Freebox data and the previous state to what the display
-//! shows. Pure: the caller polls the Freebox, reads the clock and the files.
+//! One cycle of the presence part: from the Freebox data and the previous
+//! state to each person's state. Pure: the caller polls the Freebox, reads
+//! the clock and the files. The bus part and the display update are decided
+//! by the caller (`bus`, `update`).
 
 use std::collections::BTreeMap;
 
@@ -11,25 +13,11 @@ use crate::rate::{DeviceRate, counter_delta, person_rate_bps, rate_bps};
 use crate::refresh::HouseholdState;
 use crate::saved::{SavedState, Snapshot};
 use crate::state::{Person, person_state};
-use crate::update::{UpdateKind, plan_update};
-
-/// The daily forced refresh happens on the first cycle after this hour (UTC):
-/// 03:00 UTC is 04:00 in winter and 05:00 in summer in France.
-pub const DAILY_REFRESH_HOUR_UTC: i64 = 3;
 
 /// Rates are averaged over this window: the oldest reading of the counters
 /// within it is the reference. With a cycle every minute, a one-minute rate
 /// would follow every pause of a video.
 pub const RATE_WINDOW_SECS: i64 = 900;
-
-/// Whether the daily forced refresh is due: the last full refresh happened
-/// before the most recent `DAILY_REFRESH_HOUR_UTC`.
-pub fn daily_refresh_due(now: i64, last_full_refresh: Option<i64>) -> bool {
-    const DAY: i64 = 86_400;
-    let offset = DAILY_REFRESH_HOUR_UTC * 3_600;
-    let latest_boundary = (now - offset).div_euclid(DAY) * DAY + offset;
-    last_full_refresh.is_none_or(|last| last < latest_boundary)
-}
 
 /// Everything a cycle needs.
 pub struct CycleInput<'a> {
@@ -46,22 +34,15 @@ pub struct CycleInput<'a> {
     pub counters: &'a BTreeMap<String, u64>,
     /// State left by the previous run, if any.
     pub previous: Option<&'a SavedState>,
-    /// Whether the image shown on the display was saved (needed for a partial
-    /// refresh).
-    pub previous_frame: bool,
-    /// Full refresh even if nothing changed.
-    pub force: bool,
-    /// False to always use full refreshes.
-    pub partial_enabled: bool,
 }
 
 /// What a cycle decides.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleOutput {
     pub household: HouseholdState,
-    /// What to do with the display.
-    pub update: UpdateKind,
-    /// State to save for the next run.
+    /// State to save for the next run. The caller sets its display and bus
+    /// fields (`last_full_refresh`, `bus`), carried over from the previous
+    /// state here.
     pub saved: SavedState,
 }
 
@@ -82,17 +63,6 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
     let last_full_refresh = input
         .previous
         .and_then(|previous| previous.last_full_refresh);
-    let partials_since_full = input
-        .previous
-        .map_or(0, |previous| previous.partials_since_full);
-    let update = plan_update(
-        input.previous.map(|previous| &previous.household),
-        &household,
-        input.previous_frame,
-        input.force || daily_refresh_due(input.now, last_full_refresh),
-        partials_since_full,
-        input.partial_enabled,
-    );
     let counters = input
         .counters
         .iter()
@@ -104,20 +74,11 @@ pub fn cycle(input: &CycleInput) -> CycleOutput {
             polled_at: input.now,
             household: household.clone(),
             counters,
-            last_full_refresh: if update == UpdateKind::Full {
-                Some(input.now)
-            } else {
-                last_full_refresh
-            },
-            partials_since_full: match update {
-                UpdateKind::Full => 0,
-                UpdateKind::Partial(_) => partials_since_full + 1,
-                UpdateKind::None => partials_since_full,
-            },
+            last_full_refresh,
             earlier: recent_snapshots(input.previous, input.now),
+            bus: input.previous.and_then(|previous| previous.bus.clone()),
         },
         household,
-        update,
     }
 }
 
@@ -249,8 +210,8 @@ mod tests {
             household: PEOPLE.into_iter().map(|person| (person, Away)).collect(),
             counters: counters(values),
             last_full_refresh: Some(NOW - 900),
-            partials_since_full: 0,
             earlier: Vec::new(),
+            bus: None,
         }
     }
 
@@ -258,7 +219,6 @@ mod tests {
         hosts: &[Host],
         now_counters: &[(&str, u64)],
         previous: Option<&SavedState>,
-        force: bool,
     ) -> CycleOutput {
         cycle(&CycleInput {
             now: NOW,
@@ -268,9 +228,6 @@ mod tests {
             hosts,
             counters: &counters(now_counters),
             previous,
-            previous_frame: true,
-            force,
-            partial_enabled: true,
         })
     }
 
@@ -285,19 +242,19 @@ mod tests {
 
     #[test]
     fn recently_active_smartphone_means_home() {
-        let output = run(&[host(R_PHONE, NOW - 120)], &[], None, false);
+        let output = run(&[host(R_PHONE, NOW - 120)], &[], None);
         assert_eq!(state_of(&output, 'R'), HomePassive);
     }
 
     #[test]
     fn person_without_smartphone_is_away() {
-        let output = run(&[host(R_PHONE, NOW - 120)], &[], None, false);
+        let output = run(&[host(R_PHONE, NOW - 120)], &[], None);
         assert_eq!(state_of(&output, 'M'), Away);
     }
 
     #[test]
     fn smartphone_unknown_to_the_freebox_is_away() {
-        let output = run(&[host(R_PHONE, NOW - 120)], &[], None, false);
+        let output = run(&[host(R_PHONE, NOW - 120)], &[], None);
         assert_eq!(state_of(&output, 'H'), Away);
     }
 
@@ -309,7 +266,6 @@ mod tests {
             &[host(R_PHONE, NOW - 60)],
             &[(R_LAPTOP, 1_000 + SIX_MBPS)],
             Some(&before),
-            false,
         );
         assert_eq!(state_of(&output, 'R'), HomeActive);
     }
@@ -320,7 +276,6 @@ mod tests {
             &[host(R_PHONE, NOW - 60)],
             &[(R_LAPTOP, 50_000_000_000)],
             None,
-            false,
         );
         assert_eq!(state_of(&output, 'R'), HomePassive);
     }
@@ -337,7 +292,6 @@ mod tests {
                 (UNMAPPED_TV, 10 * SIX_MBPS),
             ],
             Some(&before),
-            false,
         );
         assert_eq!(state_of(&output, 'H'), HomeActive);
         // The unmapped TV counts for nobody: R stays passive.
@@ -366,9 +320,6 @@ mod tests {
             hosts: &hosts,
             counters: &counters,
             previous: Some(&before),
-            previous_frame: true,
-            force: false,
-            partial_enabled: true,
         });
         assert_eq!(state_of(&output, 'H'), HomeActive);
     }
@@ -380,21 +331,8 @@ mod tests {
             &[host(R_PHONE, NOW - 3_600)],
             &[(R_LAPTOP, SIX_MBPS)],
             Some(&before),
-            false,
         );
         assert_eq!(state_of(&output, 'R'), Away);
-    }
-
-    #[test]
-    fn first_run_refreshes() {
-        assert_eq!(run(&[], &[], None, false).update, UpdateKind::Full);
-    }
-
-    #[test]
-    fn unchanged_state_does_not_refresh_unless_forced() {
-        let before = previous(&[]);
-        assert_eq!(run(&[], &[], Some(&before), false).update, UpdateKind::None);
-        assert_eq!(run(&[], &[], Some(&before), true).update, UpdateKind::Full);
     }
 
     #[test]
@@ -403,7 +341,6 @@ mod tests {
             &[],
             &[(R_LAPTOP, 42), (H_CONSOLE, 7), (UNMAPPED_TV, 99)],
             None,
-            false,
         );
         assert_eq!(output.saved.polled_at, NOW);
         assert_eq!(
@@ -411,65 +348,6 @@ mod tests {
             counters(&[(R_LAPTOP, 42), (H_CONSOLE, 7)])
         );
         assert_eq!(output.saved.household, output.household);
-    }
-
-    /// 2025-10-09 03:00:00 UTC: the daily refresh boundary of the day of `NOW`
-    /// (2025-10-09 08:53:20 UTC).
-    const TODAY_03H: i64 = 1_759_978_800;
-    const DAY: i64 = 86_400;
-
-    #[test]
-    fn daily_refresh_is_due_after_the_hour_if_not_done_since() {
-        assert!(daily_refresh_due(NOW, Some(TODAY_03H - 60)));
-        assert!(daily_refresh_due(NOW, None));
-    }
-
-    #[test]
-    fn daily_refresh_is_not_due_if_done_since_the_hour_today() {
-        assert!(!daily_refresh_due(NOW, Some(TODAY_03H + 60)));
-    }
-
-    #[test]
-    fn daily_refresh_is_not_due_before_the_hour_if_done_since_yesterday() {
-        let before = TODAY_03H - 3_600;
-        assert!(!daily_refresh_due(before, Some(TODAY_03H - DAY + 60)));
-        assert!(daily_refresh_due(before, Some(TODAY_03H - DAY - 60)));
-    }
-
-    #[test]
-    fn unchanged_state_refreshes_when_the_daily_refresh_is_due() {
-        let mut before = previous(&[]);
-        before.last_full_refresh = Some(TODAY_03H - 60);
-        assert_eq!(run(&[], &[], Some(&before), false).update, UpdateKind::Full);
-    }
-
-    #[test]
-    fn last_full_refresh_is_updated_on_redraw_and_kept_otherwise() {
-        let redrawn = run(&[], &[], None, false);
-        assert_eq!(redrawn.saved.last_full_refresh, Some(NOW));
-
-        let before = previous(&[]);
-        let unchanged = run(&[], &[], Some(&before), false);
-        assert_eq!(unchanged.update, UpdateKind::None);
-        assert_eq!(unchanged.saved.last_full_refresh, before.last_full_refresh);
-    }
-
-    #[test]
-    fn partial_refresh_counts_and_full_refresh_resets_the_count() {
-        let mut before = previous(&[]);
-        before.partials_since_full = 4;
-        before.last_full_refresh = Some(NOW - 600);
-        let partial = run(&[host(R_PHONE, NOW - 60)], &[], Some(&before), false);
-        assert!(matches!(partial.update, UpdateKind::Partial(_)));
-        assert_eq!(partial.saved.partials_since_full, 5);
-        assert_eq!(partial.saved.last_full_refresh, Some(NOW - 600));
-
-        let unchanged = run(&[], &[], Some(&before), false);
-        assert_eq!(unchanged.saved.partials_since_full, 4);
-
-        let full = run(&[], &[], Some(&before), true);
-        assert_eq!(full.saved.partials_since_full, 0);
-        assert_eq!(full.saved.last_full_refresh, Some(NOW));
     }
 
     #[test]
@@ -487,7 +365,6 @@ mod tests {
             &[host(R_PHONE, NOW - 60)],
             &[(R_LAPTOP, total)],
             Some(&before),
-            false,
         );
         assert_eq!(state_of(&output, 'R'), HomeActive);
     }
@@ -506,7 +383,7 @@ mod tests {
                 counters: counters(&[(R_LAPTOP, 300)]),
             },
         ];
-        let output = run(&[], &[(R_LAPTOP, 600)], Some(&before), false);
+        let output = run(&[], &[(R_LAPTOP, 600)], Some(&before));
         assert_eq!(
             output.saved.earlier,
             [
@@ -531,7 +408,6 @@ mod tests {
             &[host(R_PHONE, NOW - 60)],
             &[(R_LAPTOP, 6_000_000 / 8 * 3_600)],
             Some(&before),
-            false,
         );
         assert_eq!(state_of(&output, 'R'), HomeActive);
         assert!(output.saved.earlier.is_empty());

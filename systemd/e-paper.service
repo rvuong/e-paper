@@ -8,11 +8,16 @@ Type=oneshot
 ExecStart=/usr/local/bin/e-paper run --epd \
     --token %d/freebox_app_token \
     --devices %d/devices.toml \
+    --prim-key %d/prim_api_key \
     --state /var/lib/e-paper/state.json
 # Secrets and personal data, readable by root only in /etc/e-paper/, handed
 # to the service in its credentials directory (%d).
 LoadCredential=freebox_app_token:/etc/e-paper/freebox_app_token
 LoadCredential=devices.toml:/etc/e-paper/devices.toml
+LoadCredential=prim_api_key:/etc/e-paper/prim_api_key
+# The home stops (PRIM_STOP_RUNGIS, PRIM_STOP_ANTONY): personal data, kept
+# out of git.
+EnvironmentFile=/etc/e-paper/prim.env
 # A throwaway user, created by systemd for each run, allowed to use the panel.
 DynamicUser=yes
 SupplementaryGroups=spi gpio

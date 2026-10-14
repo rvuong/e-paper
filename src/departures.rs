@@ -5,8 +5,8 @@
 //! See CLAUDE.md, "Phase 2".
 
 use jiff::tz::TimeZone;
-use jiff::{SignedDuration, Timestamp};
-use serde::Deserialize;
+use jiff::{SignedDuration, Timestamp, Zoned};
+use serde::{Deserialize, Serialize};
 
 use crate::board::{Block, Time};
 
@@ -29,20 +29,20 @@ pub const LINE_319: &str = "STIF:Line::C01282:";
 pub const LINE_401: &str = "STIF:Line::C00339:";
 
 /// Service status of a line at a pole, when it has no departure to give.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ServiceStatus {
     AfterLastJourney,
     BeforeFirstJourney,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Departure {
     pub line: String,
     pub at: Timestamp,
 }
 
 /// What one answer says about its direction.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Answer {
     pub departures: Vec<Departure>,
     pub statuses: Vec<(String, ServiceStatus)>,
@@ -197,11 +197,16 @@ pub fn next(answer: &Answer, now: Timestamp, min_lead: SignedDuration) -> Next {
     }
 }
 
-/// The time of day in Paris, daylight saving included, truncated to the
-/// minute: a bus is never shown later than it leaves.
-pub fn paris_time(at: Timestamp) -> Time {
+/// The instant in Paris, daylight saving included.
+pub fn in_paris(at: Timestamp) -> Zoned {
     let paris = TimeZone::get("Europe/Paris").expect("time zone database bundled with jiff");
-    let local = at.to_zoned(paris);
+    at.to_zoned(paris)
+}
+
+/// The time of day in Paris, truncated to the minute: a bus is never shown
+/// later than it leaves.
+pub fn paris_time(at: Timestamp) -> Time {
+    let local = in_paris(at);
     Time {
         hour: local.hour() as u8,
         minute: local.minute() as u8,

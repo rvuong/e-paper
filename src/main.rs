@@ -10,7 +10,10 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Parser, Subcommand};
+use e_paper::board::{Block, Time, board_layout};
+use e_paper::bus::{self, BusState};
 use e_paper::cycle::{CycleInput, cycle};
+use e_paper::departures::Direction;
 use e_paper::devices;
 use e_paper::diagnose;
 use e_paper::display::{Display, PngDisplay, Update};
@@ -23,12 +26,13 @@ use e_paper::mockups::phase1_states;
 use e_paper::prim::{self, Stop};
 use e_paper::prim_client;
 use e_paper::refresh::HouseholdState;
-use e_paper::render::{atkinson_bold, render};
+use e_paper::render::{atkinson_bold, render, render_board};
 use e_paper::saved;
 use e_paper::state::PersonState::{Away, HomeActive, HomePassive};
 use e_paper::state::{ACTIVITY_THRESHOLD_BPS, PersonState};
-use e_paper::update::{UpdateKind, changed_window};
+use e_paper::update::{UpdateKind, changed_window, hourly_full_due, plan_display};
 use e_paper::usage;
+use jiff::Timestamp;
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -70,7 +74,8 @@ enum Command {
         #[arg(long, default_value = "devices.toml")]
         devices: PathBuf,
     },
-    /// Runs one cycle: polls the Freebox, computes the state, redraws if needed.
+    /// Runs one cycle: polls the Freebox (and PRIM on its own cadence),
+    /// computes the state, redraws if needed.
     Run {
         /// The app token written by `authorize`.
         #[arg(long, default_value = "secrets/freebox_app_token")]
@@ -83,6 +88,8 @@ enum Command {
         state: PathBuf,
         #[command(flatten)]
         output: Output,
+        #[command(flatten)]
+        prim: Prim,
         /// Presence window in seconds: a smartphone active this recently is
         /// home. Independent of the cycle period.
         #[arg(long, default_value_t = 300)]
@@ -124,6 +131,21 @@ enum Command {
         #[command(flatten)]
         output: Output,
     },
+}
+
+/// The PRIM API, for the bus part.
+#[derive(clap::Args)]
+struct Prim {
+    /// The PRIM API key (a secret).
+    #[arg(long = "prim-key", default_value = "secrets/prim_api_key")]
+    key: PathBuf,
+    /// SIRI reference of the home pole towards Rungis, e.g.
+    /// `STIF:StopPoint:Q:12345:`. Kept out of git: set it in the environment.
+    #[arg(long, env = "PRIM_STOP_RUNGIS")]
+    stop_rungis: String,
+    /// SIRI reference of the home pole towards Antony RER.
+    #[arg(long, env = "PRIM_STOP_ANTONY")]
+    stop_antony: String,
 }
 
 /// Where to show the display.
@@ -178,6 +200,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
             devices,
             state,
             output,
+            prim,
             interval,
             force,
             full_only,
@@ -187,6 +210,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn Error>> {
             &devices,
             &state,
             &output,
+            &prim,
             interval,
             force,
             !full_only,
@@ -263,6 +287,7 @@ fn run_cycle(
     devices_path: &Path,
     state_path: &Path,
     output_target: &Output,
+    prim: &Prim,
     interval_secs: i64,
     force: bool,
     partial_enabled: bool,
@@ -286,7 +311,8 @@ fn run_cycle(
     let hosts = client.lan_hosts()?;
     // Devices on the repeater only have the LAN browser's counter.
     let counters = freebox::download_counters(client.wifi_counters()?, &hosts);
-    let now = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())?;
+    let now_at = Timestamp::now();
+    let now = now_at.as_second();
 
     let input = CycleInput {
         now,
@@ -296,9 +322,6 @@ fn run_cycle(
         hosts: &hosts,
         counters: &counters,
         previous: previous.as_ref(),
-        previous_frame: previous_frame.is_some(),
-        force,
-        partial_enabled,
     };
     let output = cycle(&input);
     // The display matters more than the log: a write failure is only a warning.
@@ -313,7 +336,36 @@ fn run_cycle(
         .collect();
     println!("{}", states.join(", "));
 
-    let update = match (output.update, &previous_frame) {
+    // PRIM is polled on its own cadence; a failed poll only shows as the
+    // wrench, the presence part is still drawn.
+    let previous_bus = previous.as_ref().and_then(|state| state.bus.as_ref());
+    let bus = match previous_bus.filter(|bus| !bus::poll_due(now_at, Some(bus.polled_at))) {
+        Some(bus) => bus.clone(),
+        None => poll_prim(prim, previous_bus, now_at)?,
+    };
+    let board = bus::board(now_at, &bus);
+    println!(
+        "Rungis: {}; Antony: {}",
+        describe_block(&board.rungis),
+        describe_block(&board.antony)
+    );
+
+    let font = atkinson_bold();
+    let mut frame = Frame::new();
+    render_board(
+        &mut frame,
+        &board_layout(&board, &output.household, &font),
+        &font,
+    )?;
+    let mut saved = output.saved;
+    let full_required = force || hourly_full_due(now, saved.last_full_refresh);
+    let plan = plan_display(
+        previous_frame.as_ref(),
+        &frame,
+        full_required,
+        partial_enabled,
+    );
+    let update = match (plan, &previous_frame) {
         (UpdateKind::None, _) => None,
         (UpdateKind::Partial(window), Some(previous)) => Some(Update::Partial { previous, window }),
         _ => Some(Update::Full),
@@ -321,21 +373,45 @@ fn run_cycle(
     match update {
         None => println!("No change: display not touched"),
         Some(update) => {
-            let mut frame = Frame::new();
-            render(&mut frame, &layout(&output.household), &atkinson_bold())?;
             output_target.open()?.show(&frame, update)?;
             fs::write(&frame_path, frame.to_png())
                 .map_err(|error| format!("cannot write {}: {error}", frame_path.display()))?;
             let kind = match update {
-                Update::Full => "full",
+                Update::Full => {
+                    saved.last_full_refresh = Some(now);
+                    "full"
+                }
                 Update::Partial { .. } => "partial",
             };
             println!("Display redrawn ({kind}): {}", output_target.describe());
         }
     }
-    saved::save(state_path, &output.saved)
+    saved.bus = Some(bus);
+    saved::save(state_path, &saved)
         .map_err(|error| format!("cannot write {}: {error}", state_path.display()))?;
     Ok(())
+}
+
+/// Polls both home poles. A failed poll is a warning, counted in the state.
+fn poll_prim(
+    prim: &Prim,
+    previous: Option<&BusState>,
+    now: Timestamp,
+) -> Result<BusState, Box<dyn Error>> {
+    let client = prim_client::Client::new(read_prim_key(&prim.key)?);
+    let poll = |label: &str, stop: &str, direction| {
+        let result = match client.stop_monitoring(stop) {
+            Ok(answer) => bus::read_answer(answer.status, &answer.body, direction),
+            Err(error) => Err(error.to_string()),
+        };
+        if let Err(error) = &result {
+            eprintln!("warning: PRIM {label}: {error}");
+        }
+        result
+    };
+    let rungis = poll("rungis", &prim.stop_rungis, Direction::Rungis);
+    let antony = poll("antony", &prim.stop_antony, Direction::Antony);
+    Ok(bus::after_poll(previous, now, rungis, antony))
 }
 
 fn test_pattern(output: &Output) -> Result<(), Box<dyn Error>> {
@@ -391,6 +467,19 @@ fn partial_test(output: &Output) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn describe_block(block: &Block) -> String {
+    match block {
+        Block::Times(times) if times.is_empty() => "no departure".into(),
+        Block::Times(times) => times
+            .iter()
+            .map(Time::to_string)
+            .collect::<Vec<_>>()
+            .join(" "),
+        Block::Moon => "service over (moon)".into(),
+        Block::Wrench => "bus data unavailable (wrench)".into(),
+    }
+}
+
 fn describe(state: PersonState) -> &'static str {
     match state {
         PersonState::Away => "away",
@@ -426,9 +515,7 @@ fn read_mapping(path: &Path) -> Result<devices::Mapping, Box<dyn Error>> {
 }
 
 fn bus_log(key_path: &Path, stops: &[Stop], dir: &Path) -> Result<(), Box<dyn Error>> {
-    let key = fs::read_to_string(key_path)
-        .map_err(|error| format!("cannot read {}: {error}", key_path.display()))?;
-    let client = prim_client::Client::new(prim::api_key(&key)?);
+    let client = prim_client::Client::new(read_prim_key(key_path)?);
     fs::create_dir_all(dir)?;
     for stop in stops {
         let polled_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -452,6 +539,12 @@ fn bus_log(key_path: &Path, stops: &[Stop], dir: &Path) -> Result<(), Box<dyn Er
         writeln!(file, "{line}")?;
     }
     Ok(())
+}
+
+fn read_prim_key(path: &Path) -> Result<String, Box<dyn Error>> {
+    let key = fs::read_to_string(path)
+        .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    Ok(prim::api_key(&key)?)
 }
 
 fn read_token(path: &Path) -> Result<String, Box<dyn Error>> {

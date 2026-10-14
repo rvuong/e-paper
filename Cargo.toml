@@ -7,12 +7,12 @@ description = "Household e-paper dashboard on a Raspberry Pi"
 publish = false
 
 [dependencies]
-clap = { version = "4.6.7", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive", "env"] }
 embedded-graphics = "0.8.2"
 embedded-hal = "1"
 fontdue = "0.9.4"
 hmac = "0.13.0"
-jiff = { version = "0.2.38", features = ["tzdb-bundle-always"] }
+jiff = { version = "0.2.38", features = ["serde", "tzdb-bundle-always"] }
 linux-embedded-hal = { version = "0.5.0", default-features = false, features = ["gpio_cdev", "spi"] }
 png = "0.18.1"
 serde = { version = "1.0.229", features = ["derive"] }
