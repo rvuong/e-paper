@@ -2,20 +2,20 @@
 //! runs, what the board shows. Pure: the caller makes the HTTP calls and
 //! reads the clock.
 //!
-//! See CLAUDE.md, "Phase 2" (peak window, quota) and guide 14.
+//! See CLAUDE.md, "Phase 2" (polling window, quota) and guide 14.
 
-use jiff::civil::Weekday;
 use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};
 
 use crate::board::Board;
 use crate::departures::{Answer, Direction, block, in_paris, paris_time, parse};
 
-/// Peak window, weekdays only, Paris time, in minutes since midnight
-/// (07:30–09:30, end excluded).
-const PEAK_MINUTES: std::ops::Range<i32> = 7 * 60 + 30..9 * 60 + 30;
-pub const PEAK_PERIOD: SignedDuration = SignedDuration::from_mins(5);
-pub const OFF_PEAK_PERIOD: SignedDuration = SignedDuration::from_mins(15);
+/// Day window, every day, Paris time, in minutes since midnight (06:00–21:00,
+/// end excluded): PRIM only announces two real-time departures per line, so
+/// they must be refreshed often.
+const DAY_MINUTES: std::ops::Range<i32> = 6 * 60..21 * 60;
+pub const DAY_PERIOD: SignedDuration = SignedDuration::from_mins(5);
+pub const NIGHT_PERIOD: SignedDuration = SignedDuration::from_mins(15);
 /// A run a few seconds early still polls: the timer fires every minute, and
 /// a slow run must not push the poll back by a whole minute.
 pub const TOLERANCE: SignedDuration = SignedDuration::from_secs(30);
@@ -39,12 +39,11 @@ pub struct BusState {
 /// Time between two PRIM polls at this instant.
 pub fn poll_period(now: Timestamp) -> SignedDuration {
     let local = in_paris(now);
-    let weekday = !matches!(local.weekday(), Weekday::Saturday | Weekday::Sunday);
     let minutes = i32::from(local.hour()) * 60 + i32::from(local.minute());
-    if weekday && PEAK_MINUTES.contains(&minutes) {
-        PEAK_PERIOD
+    if DAY_MINUTES.contains(&minutes) {
+        DAY_PERIOD
     } else {
-        OFF_PEAK_PERIOD
+        NIGHT_PERIOD
     }
 }
 
@@ -128,49 +127,50 @@ mod tests {
         }
     }
 
-    /// Wednesday 2026-10-14, 08:00 in Paris (06:00 UTC): peak.
-    const PEAK: &str = "2026-10-14T06:00:00Z";
-    /// The same Wednesday, 11:00 in Paris: off-peak.
-    const OFF_PEAK: &str = "2026-10-14T09:00:00Z";
+    /// Wednesday 2026-10-14, 08:00 in Paris (06:00 UTC): day.
+    const DAY: &str = "2026-10-14T06:00:00Z";
+    /// The same Wednesday, 22:00 in Paris: night.
+    const NIGHT: &str = "2026-10-14T20:00:00Z";
 
     // A. Cadence
 
     #[test]
     fn first_run_polls() {
-        assert!(poll_due(at(PEAK), None));
+        assert!(poll_due(at(DAY), None));
     }
 
     #[test]
-    fn peak_polls_every_five_minutes() {
-        let now = at(PEAK);
+    fn day_polls_every_five_minutes() {
+        let now = at(DAY);
         assert!(poll_due(now, Some(now - minutes(5))));
         assert!(!poll_due(now, Some(now - minutes(4))));
     }
 
     #[test]
-    fn off_peak_polls_every_fifteen_minutes() {
-        let now = at(OFF_PEAK);
+    fn night_polls_every_fifteen_minutes() {
+        let now = at(NIGHT);
         assert!(poll_due(now, Some(now - minutes(15))));
         assert!(!poll_due(now, Some(now - minutes(14))));
     }
 
     #[test]
-    fn saturday_morning_is_off_peak() {
-        // Saturday 2026-10-17, 08:00 in Paris.
-        assert_eq!(poll_period(at("2026-10-17T06:00:00Z")), OFF_PEAK_PERIOD);
+    fn saturday_follows_the_same_window() {
+        // Saturday 2026-10-17, 08:00 and 22:00 in Paris.
+        assert_eq!(poll_period(at("2026-10-17T06:00:00Z")), DAY_PERIOD);
+        assert_eq!(poll_period(at("2026-10-17T20:00:00Z")), NIGHT_PERIOD);
     }
 
     #[test]
-    fn peak_runs_from_07_30_to_09_30() {
-        assert_eq!(poll_period(at("2026-10-14T05:29:00Z")), OFF_PEAK_PERIOD);
-        assert_eq!(poll_period(at("2026-10-14T05:30:00Z")), PEAK_PERIOD);
-        assert_eq!(poll_period(at("2026-10-14T07:29:00Z")), PEAK_PERIOD);
-        assert_eq!(poll_period(at("2026-10-14T07:30:00Z")), OFF_PEAK_PERIOD);
+    fn day_runs_from_06_00_to_21_00() {
+        assert_eq!(poll_period(at("2026-10-14T03:59:00Z")), NIGHT_PERIOD);
+        assert_eq!(poll_period(at("2026-10-14T04:00:00Z")), DAY_PERIOD);
+        assert_eq!(poll_period(at("2026-10-14T18:59:00Z")), DAY_PERIOD);
+        assert_eq!(poll_period(at("2026-10-14T19:00:00Z")), NIGHT_PERIOD);
     }
 
     #[test]
     fn a_run_a_few_seconds_early_still_polls() {
-        let now = at(PEAK);
+        let now = at(DAY);
         assert!(poll_due(
             now,
             Some(now - SignedDuration::from_secs(4 * 60 + 58))
@@ -227,12 +227,12 @@ mod tests {
     fn poles_are_counted_separately() {
         let bus = after_poll(
             None,
-            at(PEAK),
+            at(DAY),
             Err("timeout".into()),
             Ok(answer(LINE_297, "2026-10-14T06:12:00Z")),
         );
         assert_eq!((bus.rungis.failures, bus.antony.failures), (1, 0));
-        assert_eq!(bus.polled_at, at(PEAK));
+        assert_eq!(bus.polled_at, at(DAY));
     }
 
     // C. Board
