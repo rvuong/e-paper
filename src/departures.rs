@@ -178,7 +178,7 @@ pub fn parse(body: &str, direction: Direction) -> Result<Answer, String> {
 }
 
 /// The next two catchable departures (at least `min_lead` from `now`,
-/// bound included), or the moon when there is none and one of the
+/// bound included, one per minute), or the moon when there is none and one of the
 /// direction's lines is out of service.
 pub fn next(answer: &Answer, now: Timestamp, min_lead: SignedDuration) -> Next {
     let earliest = now + min_lead;
@@ -189,6 +189,9 @@ pub fn next(answer: &Answer, now: Timestamp, min_lead: SignedDuration) -> Next {
         .filter(|&at| at >= earliest)
         .collect();
     times.sort();
+    // Two buses in the same minute (or one announced twice) would show the
+    // same time twice: keep one per displayed minute.
+    times.dedup_by_key(|at| at.as_second().div_euclid(60));
     times.truncate(2);
     if times.is_empty() && !answer.statuses.is_empty() {
         Next::ServiceOver
@@ -372,6 +375,32 @@ mod tests {
         assert_eq!(
             next(&answer, at("2026-10-14T05:30:00Z"), FIVE_MINUTES),
             Next::Times(vec![at("2026-10-14T05:36:22Z")])
+        );
+    }
+
+    #[test]
+    fn departures_in_the_same_minute_show_once() {
+        let answer = departures(&[
+            (LINE_297, "2026-10-22T05:34:10Z"),
+            (LINE_401, "2026-10-22T05:34:50Z"),
+            (LINE_297, "2026-10-22T05:41:00Z"),
+        ]);
+        assert_eq!(
+            next(&answer, at("2026-10-22T05:26:00Z"), FIVE_MINUTES),
+            Next::Times(vec![at("2026-10-22T05:34:10Z"), at("2026-10-22T05:41:00Z")])
+        );
+    }
+
+    #[test]
+    fn duplicate_departure_shows_once() {
+        let answer = departures(&[
+            (LINE_297, "2026-10-22T05:34:10Z"),
+            (LINE_297, "2026-10-22T05:34:10Z"),
+            (LINE_297, "2026-10-22T05:49:00Z"),
+        ]);
+        assert_eq!(
+            next(&answer, at("2026-10-22T05:26:00Z"), FIVE_MINUTES),
+            Next::Times(vec![at("2026-10-22T05:34:10Z"), at("2026-10-22T05:49:00Z")])
         );
     }
 
