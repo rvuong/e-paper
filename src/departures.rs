@@ -2,7 +2,7 @@
 //! catchable departures of a direction, without any network access.
 //!
 //! Times are UTC instants until `block` turns them into Paris times.
-//! See CLAUDE.md, "Phase 2".
+//! Selection rules: guide 12.
 
 use jiff::tz::TimeZone;
 use jiff::{SignedDuration, Timestamp, Zoned};

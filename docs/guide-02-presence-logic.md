@@ -3,8 +3,11 @@
 The core of phase 1: from the Freebox data (byte counters, smartphone
 activity) to the state of each person (`Away`, `HomePassive`, `HomeActive`),
 and the decision to redraw the display. Only pure functions: no Freebox, no
-display, no clock, no file. The rules are in `CLAUDE.md` ("Presence rule",
-"Activity mark", "Rate computation", "Refresh").
+display, no clock, no file. The rules: a person is home if their smartphone
+was active within the presence window; the download rates of their devices,
+from byte counter deltas, are summed, and above 5 Mb/s the activity mark
+shows (never while the smartphone is away); the display is redrawn only
+when the state changes.
 
 Approved tests: 21 unit tests in 4 modules (the approved test 16 is split in
 two: "below" and "exactly at" the threshold; approved tests 13 and 14 are one
@@ -528,8 +531,7 @@ git commit -m "feat: presence logic (state, rates, presence rule, refresh)"
 ```
 
 Expected new files: `docs/guide-02-presence-logic.md`, `src/lib.rs`,
-`src/presence.rs`, `src/rate.rs`, `src/refresh.rs`, `src/state.rs` (plus
-`CLAUDE.md` if modified).
+`src/presence.rs`, `src/rate.rs`, `src/refresh.rs`, `src/state.rs`.
 
 ## Report
 

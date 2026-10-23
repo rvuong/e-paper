@@ -22,7 +22,7 @@ command, high for data).
 ## 0. Stop the old program first
 
 Two programs must never drive the panel at the same time. Disable the old
-cron jobs now (step 3 of the decommissioning, see `CLAUDE.md`). Back up the
+cron jobs now (disable, do not delete: see [`decommission-inventory.md`](decommission-inventory.md)). Back up the
 root crontab on the dev PC first (outside the repository):
 
 ```bash

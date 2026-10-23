@@ -1,7 +1,7 @@
 # Guide 14: phase 2 cycle
 
-`e-paper run` switches to the phase 2 screen (CLAUDE.md "Phase 2", and
-"Status and next steps", 14). Each minute it:
+`e-paper run` switches to the phase 2 screen (guides 11 to 13). Each minute
+it:
 
 1. computes the presence, as before;
 2. if a PRIM poll is due (every 5 minutes 07:30–09:30 on weekdays, every 15
@@ -369,7 +369,7 @@ Create the file `src/bus.rs` with this content:
 //! runs, what the board shows. Pure: the caller makes the HTTP calls and
 //! reads the clock.
 //!
-//! See CLAUDE.md, "Phase 2" (peak window, quota) and guide 14.
+//! Peak window and quota: guide 14.
 
 use jiff::civil::Weekday;
 use jiff::{SignedDuration, Timestamp};

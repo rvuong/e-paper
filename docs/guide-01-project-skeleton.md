@@ -152,7 +152,8 @@ git add -A
 git status
 ```
 
-Expected files: `.gitignore`, `.vscode/extensions.json`, `CLAUDE.md`,
+Expected files: `.gitignore`, `.vscode/extensions.json`, `CLAUDE.md` (project
+notes, local only: ignored by git since 2026-10-23),
 `Cargo.lock`, `Cargo.toml`, `docs/…`, `rust-toolchain.toml`, `src/main.rs`,
 `tools/export_mockups.py`.
 

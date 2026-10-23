@@ -1,6 +1,6 @@
 """Export the e-paper mockups as standalone SVG files (text converted to paths).
 
-Geometry mirrors the Claude Design canvas mockups (see CLAUDE.md, "Mockups").
+Geometry mirrors the Claude Design canvas mockups; the renderer is checked against these SVGs.
 
 Requirements:
     pip install fonttools   (in a virtualenv)

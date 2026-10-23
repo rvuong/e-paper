@@ -2,7 +2,7 @@
 //! runs, what the board shows. Pure: the caller makes the HTTP calls and
 //! reads the clock.
 //!
-//! See CLAUDE.md, "Phase 2" (polling window, quota) and guide 14.
+//! Polling window and quota: guide 14.
 
 use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};

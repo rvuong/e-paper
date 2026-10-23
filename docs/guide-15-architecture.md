@@ -845,7 +845,7 @@ In `src/adapters/prim.rs`:
   //! Île-de-France Mobilités PRIM API: requests, answers and log lines,
   //! without any network access.
   //!
-  //! The HTTP calls live in `prim_client`. See CLAUDE.md, "Phase 2".
+  //! The HTTP calls live in `prim_client`. See guides 09 and 12.
 
   use jiff::Timestamp;
   use serde::Deserialize;

@@ -1,6 +1,6 @@
 //! Freebox OS API: parsing and computations, without any network access.
 //!
-//! The HTTP calls live in `freebox_client`. See CLAUDE.md, "Freebox API notes".
+//! The HTTP calls live in `freebox_client`. API notes: guide 04.
 
 use std::collections::BTreeMap;
 use std::fmt;

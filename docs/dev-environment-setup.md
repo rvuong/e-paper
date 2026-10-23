@@ -195,7 +195,7 @@ ssh epaper 'uname -m; getconf LONG_BIT'
 | `aarch64` / `64` | `aarch64-unknown-linux-musl` |
 | `armv7l` / `32` | `armv7-unknown-linux-musleabihf` |
 
-Report the result so it can be recorded in `CLAUDE.md`.
+Report the result: it decides the build target.
 
 ## 6. VS Code extensions (for reference)
 

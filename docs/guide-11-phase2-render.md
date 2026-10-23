@@ -1,7 +1,7 @@
 # Guide 11: phase 2 render
 
 Draws the phase 2 screen of the approved mockup
-(`docs/mockups/phase2-buses-presence.svg`, CLAUDE.md "Phase 2", "Layout"):
+(`docs/mockups/phase2-buses-presence.svg`, shown below):
 clock, two direction blocks with two departure times each, presence circles
 in a column on the right. Nothing calls it yet: the phase 2 cycle (PRIM
 answers, choice of the departures, refresh) comes in a later guide. Phase 1,
@@ -164,7 +164,7 @@ Create the file `src/board.rs` with this content:
 //! without drawing them.
 //!
 //! Geometry from the mockup (`docs/mockups/phase2-buses-presence.svg`,
-//! CLAUDE.md "Phase 2", "Layout"). Text widths come from the font: the layout
+//! guide 11). Text widths come from the font: the layout
 //! needs them to right-align the times and to put the tags side by side.
 
 use std::fmt;

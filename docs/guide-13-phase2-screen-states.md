@@ -1,7 +1,7 @@
 # Guide 13: phase 2 screen states (moon, wrench, Paris time)
 
-The phase 2 screen learns its two other states (CLAUDE.md "Phase 2",
-"No-departure pictograms"): the **moon** when a direction's service is over
+The phase 2 screen learns its two other states (no-departure pictograms,
+shown below): the **moon** when a direction's service is over
 or not started yet, the **wrench** after two failed PRIM polls. Departure
 times become **Paris times**, truncated to the minute. Still pure functions:
 polling, saving the answers and wiring into `e-paper run` come in guide 14.

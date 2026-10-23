@@ -2,7 +2,7 @@
 //! without drawing them.
 //!
 //! Geometry from the mockup (`docs/mockups/phase2-buses-presence.svg`,
-//! CLAUDE.md "Phase 2", "Layout"). Text widths come from the font: the layout
+//! guide 11). Text widths come from the font: the layout
 //! needs them to right-align the times and to put the tags side by side.
 
 use std::fmt;

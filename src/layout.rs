@@ -1,6 +1,6 @@
 //! Phase 1 layout: what to draw for each person, without drawing it.
 //!
-//! Geometry from the mockups (`docs/mockups/phase1-*.svg`, CLAUDE.md "Layout").
+//! Geometry from the mockups (`docs/mockups/phase1-*.svg`, guide 03).
 //! Every diameter is the outer size of the shape: its stroke is drawn inside.
 //! Centres are points between pixels, as in the SVG: x = 109 is the boundary
 //! between pixel columns 108 and 109.

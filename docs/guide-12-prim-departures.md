@@ -1,8 +1,8 @@
 # Guide 12: PRIM departures (phase 2)
 
 Turns a PRIM `stop-monitoring` answer into what a direction block shows:
-the next two catchable departures, dashes, or the moon (CLAUDE.md "Phase 2":
-departure selection, 5-minute filter, no-departure pictograms). Pure
+the next two catchable departures, dashes, or the moon (departure selection
+by line and destination, 5-minute filter, no-departure pictograms). Pure
 functions, no network, no display: the phase 2 cycle (polling, Paris time,
 drawing, wrench on API failure) comes in the next guide.
 
@@ -121,7 +121,7 @@ Create the file `src/departures.rs` with this content:
 //! catchable departures of a direction, without any network access.
 //!
 //! Times stay UTC instants here; the cycle turns them into Paris times.
-//! See CLAUDE.md, "Phase 2".
+//! Selection rules: guide 12.
 
 use jiff::{SignedDuration, Timestamp};
 
