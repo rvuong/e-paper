@@ -172,6 +172,7 @@ The project was built step by step; each step has a guide in
 | [12](docs/guide-12-prim-departures.md) | PRIM departures |
 | [13](docs/guide-13-phase2-screen-states.md) | Moon and wrench screens |
 | [14](docs/guide-14-phase2-cycle.md) | Departures cycle |
+| [15](docs/guide-15-architecture.md) | Code architecture (planned) |
 
 Also: [panel smoke test](docs/panel-smoke-test.md),
 [decommissioning the previous setup](docs/decommission-inventory.md).
