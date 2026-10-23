@@ -11,6 +11,9 @@
 /secrets/
 /bus-log/
 
+# Project notes for Claude Code: household details, kept local
+/CLAUDE.md
+
 # IDE
 /.idea/
 
