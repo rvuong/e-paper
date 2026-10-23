@@ -1,5 +1,7 @@
 # e-paper
 
+[![CI](https://github.com/rvuong/e-paper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rvuong/e-paper/actions/workflows/ci.yml)
+
 A household dashboard on a 7.5" black and white e-paper panel, driven by a
 Raspberry Pi. It hangs in a shared room and answers two questions at a
 glance: **who is home**, and **should I hurry for the next bus or wait for
