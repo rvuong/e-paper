@@ -50,6 +50,8 @@ jobs:
 
   pi-build:
     name: Pi binary (aarch64 musl)
+    # Only once the checks pass: no build for a commit that fails them.
+    needs: [fmt, clippy, test]
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
