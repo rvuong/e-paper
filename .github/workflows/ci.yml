@@ -21,6 +21,7 @@ jobs:
   fmt:
     name: fmt
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       # Installs the toolchain pinned in rust-toolchain.toml.
@@ -30,6 +31,7 @@ jobs:
   clippy:
     name: clippy
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       # The simulator, a dev-dependency, links against SDL2.
@@ -41,6 +43,7 @@ jobs:
   test:
     name: tests
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
@@ -53,6 +56,7 @@ jobs:
     # Only once the checks pass: no build for a commit that fails them.
     needs: [fmt, clippy, test]
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       # ring compiles C code: build it against musl.
