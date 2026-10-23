@@ -7,6 +7,11 @@ in a column on the right. Nothing calls it yet: the phase 2 cycle (PRIM
 answers, choice of the departures, refresh) comes in a later guide. Phase 1,
 running on the Pi, is not changed: its golden images must stay identical.
 
+<p align="center">
+  <img src="mockups/phase2-buses-presence.svg" width="640"
+       alt="Phase 2 mockup at 8:04: 8:08 and 8:31 for line 319 to Rungis, 8:12 and 8:21 for lines 297 and 401 to Antony RER; circles R, M, H, L on the right, R and H filled, a double ring around H">
+</p>
+
 Same split as phase 1:
 
 | Module | Content | Tests |

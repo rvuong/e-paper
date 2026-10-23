@@ -3,6 +3,24 @@
 Exceptionally implemented by Claude at Rémy's request (2026-10-09). This page
 records what was built and how to check it.
 
+The three mockup states this render reproduces:
+
+<table>
+  <tr>
+    <td width="33%"><img src="mockups/phase1-r-home.svg"
+      alt="Four circles R, M, H, L; only R is filled"></td>
+    <td width="33%"><img src="mockups/phase1-all-away.svg"
+      alt="Four outline circles R, M, H, L: nobody home"></td>
+    <td width="33%"><img src="mockups/phase1-activity-ring.svg"
+      alt="R and H filled, a double ring around H"></td>
+  </tr>
+  <tr>
+    <td><code>phase1-r-home</code></td>
+    <td><code>phase1-all-away</code></td>
+    <td><code>phase1-activity-ring</code></td>
+  </tr>
+</table>
+
 ## What it does
 
 The household state becomes an 800×480 black and white image, in three layers:

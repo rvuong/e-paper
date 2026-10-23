@@ -6,6 +6,19 @@ or not started yet, the **wrench** after two failed PRIM polls. Departure
 times become **Paris times**, truncated to the minute. Still pure functions:
 polling, saving the answers and wiring into `e-paper run` come in guide 14.
 
+<table>
+  <tr>
+    <td width="50%"><img src="mockups/phase2-end-of-service.svg"
+      alt="Mockup at 21:15: a moon in place of the Rungis departures, 21:22 and 21:40 to Antony RER"></td>
+    <td width="50%"><img src="mockups/phase2-bus-data-unavailable.svg"
+      alt="Mockup at 8:04: a wrench in place of the departures of both directions"></td>
+  </tr>
+  <tr>
+    <td><code>phase2-end-of-service</code>: moon for Rungis</td>
+    <td><code>phase2-bus-data-unavailable</code>: wrench in both blocks</td>
+  </tr>
+</table>
+
 | Item | Content | Tests |
 |---|---|---|
 | `jiff` | time zone database bundled in the binary | |
