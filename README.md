@@ -3,7 +3,7 @@
 [![CI](https://github.com/rvuong/e-paper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rvuong/e-paper/actions/workflows/ci.yml)
 
 A household dashboard on a 7.5" black and white e-paper panel, driven by a
-Raspberry Pi. It hangs in a shared room and answers two questions at a
+Raspberry Pi. It sits in a shared room and answers two questions at a
 glance: **who is home**, and **should I hurry for the next bus or wait for
 the following one**.
 
@@ -11,8 +11,8 @@ Written in Rust, from the panel driver up. It is also a learning project in
 Rust and embedded Linux.
 
 <p align="center">
-  <img src="docs/mockups/phase2-buses-presence.svg" width="640"
-       alt="Dashboard at 8:04: next departures 8:08 and 8:31 for line 319 to Rungis, 8:12 and 8:21 for lines 297 and 401 to Antony RER; on the right four circles R, M, H, L, with R and H filled (home) and a double ring around H">
+  <img src="docs/images/panel.jpg" width="640"
+       alt="Photo of the e-paper panel in its laser-cut plywood frame on a wooden table, showing 12:17, the next departures 12:33 and 13:01 for line 319 to Rungis, 12:32 and 12:50 for lines 297 and 401 to Antony RER, and four circles R, M, H, L on the right with R, M and H filled (home)">
 </p>
 
 ## Screens
@@ -22,6 +22,11 @@ large, thick type (Atkinson Hyperlegible Bold) so that it reads from across
 the room, and each piece of information always sits in the same place.
 
 ### Next departures and presence (current)
+
+<p align="center">
+  <img src="docs/mockups/phase2-buses-presence.svg" width="640"
+       alt="Dashboard at 8:04: next departures 8:08 and 8:31 for line 319 to Rungis, 8:12 and 8:21 for lines 297 and 401 to Antony RER; on the right four circles R, M, H, L, with R and H filled (home) and a double ring around H">
+</p>
 
 - **Clock** at the top left.
 - **Two directions**, stacked: line 319 to Rungis, lines 297 and 401 to
