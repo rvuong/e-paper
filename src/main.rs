@@ -307,10 +307,12 @@ fn run_cycle(
         .and_then(|bytes| Frame::from_png(&bytes).ok());
 
     let mut client = Client::connect()?;
-    client.login(&app_token)?;
-    let hosts = client.lan_hosts()?;
+    let session_path = state_path.with_file_name("freebox_session");
+    let (hosts, wifi_counters) = in_session(&mut client, &app_token, &session_path, |client| {
+        Ok((client.lan_hosts()?, client.wifi_counters()?))
+    })?;
     // Devices on the repeater only have the LAN browser's counter.
-    let counters = freebox::download_counters(client.wifi_counters()?, &hosts);
+    let counters = freebox::download_counters(wifi_counters, &hosts);
     let now_at = Timestamp::now();
     let now = now_at.as_second();
 
@@ -412,6 +414,46 @@ fn poll_prim(
     let rungis = poll("rungis", &prim.stop_rungis, Direction::Rungis);
     let antony = poll("antony", &prim.stop_antony, Direction::Antony);
     Ok(bus::after_poll(previous, now, rungis, antony))
+}
+
+/// Reads the Freebox in the session kept from the previous run. Logs in
+/// again only when the Freebox asks for it, keeps the new session, then reads
+/// everything again: the session may expire between two requests.
+fn in_session<T>(
+    client: &mut Client,
+    app_token: &str,
+    session_path: &Path,
+    read: impl Fn(&Client) -> Result<T, freebox::FreeboxError>,
+) -> Result<T, Box<dyn Error>> {
+    if let Some(token) = fs::read_to_string(session_path)
+        .ok()
+        .and_then(|contents| freebox::stored_session(&contents))
+    {
+        client.resume(token);
+        match read(client) {
+            Err(error) if freebox::needs_new_session(&error) => {}
+            result => return Ok(result?),
+        }
+    }
+    client.login(app_token)?;
+    if let Some(token) = client.session_token()
+        && let Err(error) = save_session(session_path, token)
+    {
+        eprintln!("warning: cannot write {}: {error}", session_path.display());
+    }
+    Ok(read(client)?)
+}
+
+/// Writes the session token, readable by its owner only; replaces the
+/// previous one.
+fn save_session(path: &Path, token: &str) -> io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)?;
+    file.write_all(token.as_bytes())
 }
 
 fn test_pattern(output: &Output) -> Result<(), Box<dyn Error>> {

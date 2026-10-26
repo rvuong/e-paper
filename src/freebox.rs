@@ -88,19 +88,25 @@ fn parse_list<T: DeserializeOwned>(json: &str) -> Result<Vec<T>, FreeboxError> {
     Ok(parse_optional(json)?.unwrap_or_default())
 }
 
-/// The `result` of a Freebox answer, `None` if absent, or its error.
+/// The `result` of a Freebox answer, `None` if absent, or its error. An error
+/// answer may carry a `result` too (a new challenge): it is read only on
+/// success.
 fn parse_optional<T: DeserializeOwned>(json: &str) -> Result<Option<T>, FreeboxError> {
     #[derive(Deserialize)]
-    struct Envelope<T> {
+    struct Envelope {
         success: bool,
-        result: Option<T>,
+        result: Option<serde_json::Value>,
         error_code: Option<String>,
         msg: Option<String>,
     }
-    let envelope: Envelope<T> =
+    let envelope: Envelope =
         serde_json::from_str(json).map_err(|e| FreeboxError::Format(e.to_string()))?;
     if envelope.success {
-        Ok(envelope.result)
+        envelope
+            .result
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| FreeboxError::Format(e.to_string()))
     } else {
         Err(FreeboxError::Api {
             code: envelope.error_code.unwrap_or_default(),
@@ -130,6 +136,19 @@ pub fn authorization_step(status: &str) -> Result<AuthorizationStep, FreeboxErro
             "authorization status {other:?}"
         ))),
     }
+}
+
+/// Whether an error asks for a new session: the session token expired, or
+/// the Freebox forgot it (reboot, session deleted by hand).
+pub fn needs_new_session(error: &FreeboxError) -> bool {
+    matches!(error, FreeboxError::Api { code, .. } if code == "auth_required")
+}
+
+/// The session token kept in a file by an earlier run, `None` if the file
+/// holds nothing.
+pub fn stored_session(contents: &str) -> Option<String> {
+    let token = contents.trim();
+    (!token.is_empty()).then(|| token.to_string())
 }
 
 /// A device known to the Freebox (LAN browser).
@@ -569,6 +588,49 @@ mod tests {
             ]
             .into_iter()
             .collect()
+        );
+    }
+
+    #[test]
+    fn auth_required_asks_for_a_new_session() {
+        let error = FreeboxError::Api {
+            code: "auth_required".into(),
+            message: "Invalid session token".into(),
+        };
+        assert!(needs_new_session(&error));
+    }
+
+    #[test]
+    fn other_api_errors_keep_the_session() {
+        let error = FreeboxError::Api {
+            code: "insufficient_rights".into(),
+            message: "Insufficient rights".into(),
+        };
+        assert!(!needs_new_session(&error));
+    }
+
+    #[test]
+    fn network_errors_keep_the_session() {
+        let error = FreeboxError::Http("connection refused".into());
+        assert!(!needs_new_session(&error));
+    }
+
+    #[test]
+    fn blank_session_file_means_no_session() {
+        assert_eq!(stored_session(""), None);
+        assert_eq!(stored_session(" \n"), None);
+        assert_eq!(stored_session("abc\n"), Some("abc".to_string()));
+    }
+
+    #[test]
+    fn error_answer_with_a_result_gives_the_api_error() {
+        let json = r#"{"success": false, "error_code": "auth_required", "msg": "Invalid session token", "result": {"challenge": "x", "password_salt": "y"}}"#;
+        assert_eq!(
+            parse_hosts(json),
+            Err(FreeboxError::Api {
+                code: "auth_required".into(),
+                message: "Invalid session token".into()
+            })
         );
     }
 }

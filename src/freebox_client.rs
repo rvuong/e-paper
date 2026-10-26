@@ -116,6 +116,16 @@ impl Client {
         Ok(())
     }
 
+    /// Uses a session token kept from an earlier run.
+    pub fn resume(&mut self, session_token: String) {
+        self.session_token = Some(session_token);
+    }
+
+    /// The current session token, to keep for the next run.
+    pub fn session_token(&self) -> Option<&str> {
+        self.session_token.as_deref()
+    }
+
     /// Devices known to the Freebox on the main LAN interface.
     pub fn lan_hosts(&self) -> Result<Vec<Host>, FreeboxError> {
         parse_hosts(&self.get_text(&format!("{}lan/browser/pub/", self.api))?)
