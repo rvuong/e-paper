@@ -1,14 +1,16 @@
 # Guide 15: code architecture (functional core, imperative shell)
 
-**Apply it after the phase 2 deployment (2026-10-20),** on a branch, one
-commit per step. Approved tests: 10 (2026-10-14), with the compromises of
-section 2.
+Apply it on a branch, one commit per step. Approved tests: 10
+(2026-10-14), with the compromises of section 2.
 
-Checked while writing this guide: it was replayed step by step on a copy of
-the project (each red step fails as described, each green step passes; 190
-library tests, 3 architecture tests and the 2 golden tests at the end,
-clippy clean, `make build` fine), and a real `run` on the dev PC drew the
-screen from the Freebox, then left the display alone on the next run.
+Updated on 2026-10-27 for the code as it is after guide 16 (Freebox
+session reuse), the one-time-per-minute rule and the 06:00–21:00 polling
+window. Checked: the guide was replayed step by step on a copy of the
+project at that point (each red step fails as described, each green step
+passes; 197 library tests, 3 architecture tests and the 2 golden tests at
+the end, `cargo clippy --all-targets -- -D warnings` clean, as in CI). A
+first version, on the code of 2026-10-14, was also checked with a real
+`run` on the dev PC; the real run of this version is step 7.
 
 Run every command from the project root; edit the files in VS Code.
 
@@ -88,7 +90,7 @@ Accepted compromises:
 | `layout.rs` | `render/layout.rs` | without `PEOPLE` |
 | `render.rs` | `render/draw.rs` | moved (`render/mod.rs` holds the module list) |
 | `frame.rs`, `icons.rs`, `update.rs`, `mockups.rs` | `render/` | moved |
-| `freebox.rs` | `adapters/freebox.rs` | adds `devices_seen` (Host → DeviceSeen) |
+| `freebox.rs` | `adapters/freebox.rs` | adds `devices_seen` (Host → DeviceSeen); keeps `needs_new_session` and `stored_session` (guide 16) |
 | `freebox_client.rs` | `adapters/freebox_client.rs` | moved |
 | `prim.rs` + `departures::parse` + `bus::read_answer` | `adapters/prim.rs` | the PRIM format in one place |
 | `prim_client.rs` | `adapters/prim_client.rs` | moved |
@@ -98,7 +100,7 @@ Accepted compromises:
 | `display.rs` | `adapters/display.rs` | moved (`Display` trait, PNG and panel) |
 | `diagnose.rs` | `adapters/diagnose.rs` | moved (reads Freebox `Host`s on purpose) |
 | `epd/` | `adapters/epd/` | moved |
-| `main::run_cycle`, `poll_prim` | `app/run.rs` | split into `compose` (pure, tested) and `run` (I/O) |
+| `main::run_cycle`, `poll_prim`, `in_session`, `save_session` | `app/run.rs` | `run_cycle` split into `compose` (pure, tested) and `run` (I/O); the other three moved unchanged |
 | `main::Output`, `read_mapping`, `read_token`, `read_prim_key` | `app/mod.rs` | shared by the commands |
 | other `main.rs` commands | `app/tools.rs` | `authorize`, `devices`, `check-*`, `bus-log`, `test-pattern`, `partial-test`, `clear` |
 | `main.rs` | `main.rs` | clap and dispatch only |
@@ -349,6 +351,12 @@ sed -i -E -e 's/\b(crate|e_paper)::render\b/\1::render::draw/g' -e 's/\b(crate|e
 sed -i -E -e 's/([^_:a-z])devices::/\1mapping_file::/g' -e 's/([^_:a-z])usage::/\1usage_log::/g' src/main.rs
 ```
 
+The README points to the driver folder:
+
+```bash
+sed -i 's#`src/epd/`#`src/adapters/epd/`#' README.md
+```
+
 ```bash
 cargo fmt
 ```
@@ -357,7 +365,7 @@ cargo fmt
 cargo test
 ```
 
-Expected: 187 library tests and the 2 golden tests pass, as before.
+Expected: 194 library tests and the 2 golden tests pass, as before.
 
 ```bash
 cargo clippy --all-targets
@@ -773,7 +781,7 @@ cargo fmt
 cargo test
 ```
 
-Expected: 183 library tests pass (the 4 `refresh` tests are gone), the
+Expected: 190 library tests pass (the 4 `refresh` tests are gone), the
 golden tests pass; the architecture test still lists
 `departures.rs: serde_json` and `cycle.rs: crate::adapters`.
 
@@ -1000,7 +1008,7 @@ cargo fmt
 cargo test
 ```
 
-Expected: 183 library tests pass; the architecture test only lists
+Expected: 190 library tests pass; the architecture test only lists
 `cycle.rs: crate::adapters`.
 
 ```bash
@@ -1077,7 +1085,7 @@ pub fn devices_seen(hosts: &[Host]) -> Vec<DeviceSeen> {
 cargo test --lib freebox
 ```
 
-Expected: 22 tests pass.
+Expected: 27 tests pass.
 
 ### The cycle takes `DeviceSeen`
 
@@ -1169,7 +1177,7 @@ cargo fmt
 cargo test
 ```
 
-Expected: 184 library tests and the 3 architecture tests pass: the domain
+Expected: 191 library tests and the 3 architecture tests pass: the domain
 no longer depends on anything outside it.
 
 ```bash
@@ -1497,9 +1505,10 @@ fn save_secret(path: &Path, secret: &str) -> io::Result<()> {
 ### Red
 
 Create the file `src/app/run.rs` with this content. `RunArgs` and `Prim`
-are the options of `e-paper run`, moved from `main.rs`; `run` and
-`poll_prim` are the former `run_cycle` and `poll_prim`; `compose` is still
-to be written:
+are the options of `e-paper run`, moved from `main.rs`; `run` is the former
+`run_cycle`; `poll_prim`, `in_session` and `save_session` (the Freebox
+session kept between runs, guide 16) come from `main.rs` unchanged;
+`compose` is still to be written:
 
 ```rust
 //! `e-paper run`: one cycle. `compose` decides everything from the data in
@@ -1507,8 +1516,10 @@ to be written:
 //! PRIM, then shows the frame and writes what the next run needs.
 
 use std::error::Error;
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::{Path, PathBuf};
 
 use jiff::Timestamp;
 
@@ -1618,10 +1629,12 @@ pub fn run(args: &RunArgs) -> Result<(), Box<dyn Error>> {
         .and_then(|bytes| Frame::from_png(&bytes).ok());
 
     let mut client = freebox_client::Client::connect()?;
-    client.login(&app_token)?;
-    let hosts = client.lan_hosts()?;
+    let session_path = args.state.with_file_name("freebox_session");
+    let (hosts, wifi_counters) = in_session(&mut client, &app_token, &session_path, |client| {
+        Ok((client.lan_hosts()?, client.wifi_counters()?))
+    })?;
     // Devices on the repeater only have the LAN browser's counter.
-    let counters = freebox::download_counters(client.wifi_counters()?, &hosts);
+    let counters = freebox::download_counters(wifi_counters, &hosts);
     let seen = freebox::devices_seen(&hosts);
     let now = Timestamp::now();
 
@@ -1704,6 +1717,46 @@ fn poll_prim(
     let rungis = poll("rungis", &args.stop_rungis, Direction::Rungis);
     let antony = poll("antony", &args.stop_antony, Direction::Antony);
     Ok(bus::after_poll(previous, now, rungis, antony))
+}
+
+/// Reads the Freebox in the session kept from the previous run. Logs in
+/// again only when the Freebox asks for it, keeps the new session, then reads
+/// everything again: the session may expire between two requests.
+fn in_session<T>(
+    client: &mut freebox_client::Client,
+    app_token: &str,
+    session_path: &Path,
+    read: impl Fn(&freebox_client::Client) -> Result<T, freebox::FreeboxError>,
+) -> Result<T, Box<dyn Error>> {
+    if let Some(token) = fs::read_to_string(session_path)
+        .ok()
+        .and_then(|contents| freebox::stored_session(&contents))
+    {
+        client.resume(token);
+        match read(client) {
+            Err(error) if freebox::needs_new_session(&error) => {}
+            result => return Ok(result?),
+        }
+    }
+    client.login(app_token)?;
+    if let Some(token) = client.session_token()
+        && let Err(error) = save_session(session_path, token)
+    {
+        eprintln!("warning: cannot write {}: {error}", session_path.display());
+    }
+    Ok(read(client)?)
+}
+
+/// Writes the session token, readable by its owner only; replaces the
+/// previous one.
+fn save_session(path: &Path, token: &str) -> io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)?;
+    file.write_all(token.as_bytes())
 }
 
 fn describe_block(block: &Block) -> String {
@@ -2050,11 +2103,11 @@ cargo fmt
 cargo test
 ```
 
-Expected: 190 library tests, the 3 architecture tests and the 2 golden
+Expected: 197 library tests, the 3 architecture tests and the 2 golden
 tests pass.
 
 ```bash
-cargo clippy --all-targets
+cargo clippy --all-targets -- -D warnings
 ```
 
 ```bash
@@ -2071,7 +2124,7 @@ A real cycle on the dev PC, on a copy of the state (the home stop
 references are those of `/etc/e-paper/prim.env` on the Pi):
 
 ```bash
-mkdir -p /tmp/e-paper-check && cp state.json frame.png /tmp/e-paper-check/
+rm -rf /tmp/e-paper-check && mkdir /tmp/e-paper-check && cp state.json frame.png /tmp/e-paper-check/
 ```
 
 ```bash
@@ -2081,7 +2134,9 @@ PRIM_STOP_RUNGIS='…' PRIM_STOP_ANTONY='…' cargo run -- run --state /tmp/e-pa
 Expected: the presence line, the two blocks, then `Display redrawn (full)`
 (first cycle of the hour) or `(partial)`; the PNG shows the phase 2 screen.
 Run the same command again within the minute: `No change: display not
-touched`.
+touched`. The Freebox session is still reused: the first run logs in and
+writes `/tmp/e-paper-check/freebox_session`; the second one reuses it (the
+file keeps its time: `ls -l --time-style=+%T /tmp/e-paper-check/`).
 
 One visible difference, on purpose: a PRIM warning (`warning: PRIM …`) now
 comes before the presence line, as PRIM is polled before `compose`.
@@ -2101,6 +2156,10 @@ git merge --ff-only refactor/architecture
 ```
 
 ```bash
+git push
+```
+
+```bash
 make deploy
 ```
 
@@ -2108,8 +2167,9 @@ make deploy
 make logs
 ```
 
-Expected: the next cycles log as before (presence line, blocks, refresh
-kind), no error. The branch can then be deleted:
+Expected: the CI run of the push is green, and the next cycles log as
+before (presence line, blocks, refresh kind), no error, no new Freebox
+session each minute. The branch can then be deleted:
 
 ```bash
 git branch -d refactor/architecture
